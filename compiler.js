@@ -3,27 +3,13 @@ var Compile = (function() {
 		// tokToStr assumes the name of the environment inside the string
 		// function body will be 'env'. This is a safe assumption until we
 		// compile with Closure, where we loose that guarantee.
-		// So what we're doing here is making two functions. One takes
-		// the environment as an extra argument called 'env'. Then we construct
-		// a function that just binds that argument, and return that.
-		// Yes, all of this is glorified eval().
+		// So here we force it back to having that name in the eval. A little
+		// janky, but not terrible.
 		
-		var args = env.vars.slice(0);
-		args.unshift('env');
-		args.push('return ' + ptToStr(env, parseTree) + ';');
-		
-		var fnWithEnv = Function.apply(null, args);
-		
-		args.shift();
-		
-		return function() {
-		    // Add back the environment before all the other arguments,
-		    // and pass through the value of the real function.
-		    
-		    var args = Array.prototype.slice.call(arguments);
-		    args.unshift(env);
-		    return fnWithEnv.apply(null, args);
-		};
+	    var args = env.vars.join(','),
+	        body = 'var env = arguments[0]; (function(' + args + ') { return ' + ptToStr(env, parseTree) + '; })';
+	    
+	    return eval(body);
 	};
 	
 	function tokToStr(env, tok) {

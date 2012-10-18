@@ -8,33 +8,38 @@
 <script type="text/javascript">
 <![CDATA[
 
-/*var f1 = function(x, y) { return Math.pow(Math.sin(x) * Math.cos(y), 2) / (x * y); };
-var f2 = Expr.compile('x', 'y', '(sin(x)cos(y))^2/(xy)');
-console.log(f2.toString());
-
-var N = 1000000;
-
-function test1() {
-	for(var i = 0; i < N; i++)
-		f1(2, 3);
+function timeit() {
+    function log2(x, y) { return Math.log(x) / Math.LN2; }
+    var f1 = function(x, y) { return Math.pow(log2(x, y), 2) / (x * y); };
+    var f2 = JSG.Expr.compile('x', 'y', 'log2(x)^2/(xy)');
+    console.log(f2.toString());
+    
+    var N = 10000000;
+    
+    function test1() {
+        for(var i = 0; i < N; i++)
+            f1(2, 3);
+    }
+    
+    function test2() {
+        for(var i = 0; i < N; i++)
+            f2(2, 3);
+    };
+    
+    console.log(f1(2, 3) + ' == ' + f2(2, 3));
+        
+    var s, e;
+    
+    s = new Date().getTime();
+    test1();
+    e = new Date().getTime();
+    console.log(e - s);
+    
+    s = new Date().getTime();
+    test2();
+    e = new Date().getTime();
+    console.log(e - s);
 }
-
-function test2() {
-	for(var i = 0; i < N; i++)
-		f2(2, 3);
-};
-	
-var s, e;
-
-s = new Date().getTime();
-test1();
-e = new Date().getTime();
-console.log(e - s);
-
-s = new Date().getTime();
-test2();
-e = new Date().getTime();
-console.log(e - s);*/
 
 function init() {
 	$('#frm').submit(function(e) {
