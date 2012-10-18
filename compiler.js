@@ -1,11 +1,29 @@
 var Compile = (function() {
 	return function(env, parseTree) {
-		var s = ptToStr(env, parseTree),
-			varStr = env.vars.join(', '),
-			f;
+		// tokToStr assumes the name of the environment inside the string
+		// function body will be 'env'. This is a safe assumption until we
+		// compile with Closure, where we loose that guarantee.
+		// So what we're doing here is making two functions. One takes
+		// the environment as an extra argument called 'env'. Then we construct
+		// a function that just binds that argument, and return that.
+		// Yes, all of this is glorified eval().
 		
-		eval('f = function(' + varStr + ') { return ' + s + '; };');
-		return f;
+		var args = env.vars.slice(0);
+		args.unshift('env');
+		args.push('return ' + ptToStr(env, parseTree) + ';');
+		
+		var fnWithEnv = Function.apply(null, args);
+		
+		args.shift();
+		
+		return function() {
+		    // Add back the environment before all the other arguments,
+		    // and pass through the value of the real function.
+		    
+		    var args = Array.prototype.slice.call(arguments);
+		    args.unshift(env);
+		    return fnWithEnv.apply(null, args);
+		};
 	};
 	
 	function tokToStr(env, tok) {
@@ -60,8 +78,12 @@ var Compile = (function() {
 		}
 		
 		if(optimize !== false && pt.isConstant()) {
-			t = ptToStr(env, pt, false);
-			return eval(t).toString();
+		    // Yes, this is glorified eval().
+		    // Same Closure issue as above; we need to get the environment into
+		    // the eval'ed code with the literal name 'env'.
+			var evalFn = new Function('env', 'return ' + ptToStr(env, pt, false));
+			
+			return evalFn(env).toString();
 		}
 		else if(rootIsOp) {
 			if(pt.children.length == 1)

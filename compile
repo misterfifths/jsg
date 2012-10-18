@@ -3,4 +3,6 @@
 cat {environment,lexer,parser,expr,compiler}.js |
 sed -e '/%CODE%/{r /dev/stdin
 d
-}' jsg.js.template > jsg.js
+}' jsg.js.template > build/jsg.js
+
+closure-compiler --language_in=ECMASCRIPT5_STRICT --js build/jsg.js --js_output_file build/jsg.min.js

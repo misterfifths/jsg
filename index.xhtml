@@ -4,7 +4,7 @@
 <head>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" />
 
-<script type="text/javascript" src="jsg.js" />
+<script type="text/javascript" src="build/jsg.min.js" />
 <script type="text/javascript">
 <![CDATA[
 
@@ -64,8 +64,9 @@ function init() {
 		env.addFn('sum', sumFn);
 			
 		try {
-			f = JSG.Expr.compile(env, $('#expr').val()),
-			res = f.apply(null, vals);
+			var f = JSG.Expr.compile(env, $('#expr').val()),
+                res = f.apply(null, vals);
+            
 			$('#res').text(res);
 			$('#fn').text(f.toString());
 		}
