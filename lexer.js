@@ -18,7 +18,6 @@ var FnCall = function(env, name) {
 var Lex = (function() {
 	var idRegex = /^([A-Za-z_][A-Za-z_0-9]*)(.*)/,
 		numRegex = /^([0-9]*\.?[0-9]+)(.*)/,
-		alphaRegex = /^[A-Za-z_]/,
 		simpleNumRegex = /^[0-9.]/;
 
 	return function(env, expr) {
@@ -33,7 +32,7 @@ var Lex = (function() {
 	};
 	
 	function realLex(state) {
-		if(state.s.length == 0) return;
+		if(state.s.length === 0) return;
 		
 		switch(state.s.charAt(0)) {
 			case '(':
@@ -81,14 +80,14 @@ var Lex = (function() {
 	
 	function addImplicitMul(state, numOk) {
 		numOk = numOk !== false;
-		if(state.env.noImplicitMul || state.tokens.length == 0) return;
+		if(state.env.noImplicitMul || state.tokens.length === 0) return;
 		
 		var lastType = state.tokens[state.tokens.length - 1].type;
 		if(lastType == 'rp' ||
 		   lastType == 'var' ||
 		   lastType == 'const' ||
 		   (numOk && lastType == 'num'))
-		   		pushFnToken(state, 'mulop', state.env._implicitMulOpId);
+                pushFnToken(state, 'mulop', state.env._implicitMulOpId);
 	}
 	
 	function lexNum(state) {
@@ -129,7 +128,7 @@ var Lex = (function() {
 			}
 		}
 		
-		throw new Error('Uknown identifier ' + id);
+		throw new Error('Unknown identifier ' + id);
 	}
 	
 	function idToToken(state, id) {
@@ -155,7 +154,7 @@ var Lex = (function() {
 	}
 	
 	function shouldNegate(state) {
-		if(state.tokens.length == 0) return true;
+		if(state.tokens.length === 0) return true;
 		
 		var last = state.tokens[state.tokens.length - 1];
 		return last.type == 'lp' ||

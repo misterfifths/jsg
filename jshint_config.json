@@ -1,0 +1,13 @@
+{
+  "browser": true,
+
+  "strict": true,
+  "undef": true,
+  "trailing": true,
+  "forin": true,
+  "evil": true,
+  "newcap": false,
+  "quotmark": "single",
+
+  "smarttabs": true
+}

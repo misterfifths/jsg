@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cat {environment,lexer,parser,expr,compiler}.js |
+sed -e '/%CODE%/{r /dev/stdin
+d
+}' jsg.js.template > jsg.js

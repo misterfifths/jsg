@@ -47,7 +47,6 @@ var Expr = (function() {
 	
 	function oneshot(vars, s) {
 		var env,
-			f,
 			vals = [];
 
 		if(arguments.length == 1) {

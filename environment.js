@@ -23,8 +23,8 @@ var Environment = (function() {
 	
 		this.fns = clone(defFns);
 		this.consts = clone(defConsts);
-		this.addops = clone(defAddops);
-		this.mulops = clone(defMulops);
+		this.addops = clone(defAddOps);
+		this.mulops = clone(defMulOps);
 		
 		this.noImplicitMul = !!noImplicitMul;
 		this.noPowOp = !!noPowOp;
@@ -99,12 +99,12 @@ var Environment = (function() {
 		sqrt2: Math.SQRT2
 	};
 	
-	defAddops = {
+	defAddOps = {
 		'+': NativeOp('+', 2),
 		'-': NativeOp('-', 2)
 	};
 	
-	defMulops = {
+	defMulOps = {
 		'*': NativeOp('*', 2),
 		'/': NativeOp('/', 2),
 		'%': NativeOp('%', 2)
@@ -134,7 +134,7 @@ var Environment = (function() {
 	
 	eproto.addConst = function(name, val) {
 		dieIfBadId(this, name);
-		this.consts[constName] = val;
+		this.consts[name] = val;
 	};
 	
 	eproto.addAddOp = function(name, fn) {
@@ -202,7 +202,7 @@ var Environment = (function() {
 		if(typeof id != 'string' || id.length != 1 || id == ' ')
 			throw new Error('Operators IDs be a single, non-space character');
 		
-		if(env.isKnownId(opName))
+		if(env.isKnownId(id))
 			throw new Error('Operator ID ' + id + ' is already in use');
 		
 		if(!env.noArityCheck && fn.length != 2)

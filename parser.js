@@ -8,11 +8,11 @@ var Parse = (function() {
 	};
 		
 	ParseTree.prototype.isLeaf = function() {
-		return !this.children || this.children.length == 0;
+		return !this.children || this.children.length === 0;
 	};
 	
 	ParseTree.prototype.isConstant = function() {
-		return this.root.type != 'var' && 
+		return this.root.type != 'var' &&
 		       (this.isLeaf() || areConstant(this.children));
 	};
 	
@@ -27,7 +27,7 @@ var Parse = (function() {
 		var toks = tokens.slice(),
 			pt = parseE(env, toks);
 		
-		if(toks.length != 0)
+		if(toks.length > 0)
 			throw new Error('Unexpected token(s) after end of expression');
 		
 		return pt;
@@ -36,7 +36,7 @@ var Parse = (function() {
 	function parseE(env, tokens) {
 		var eparse = parseTM(env, tokens);
 			
-		while(tokens.length != 0 && tokens[0].type == 'addop') {
+		while(tokens.length > 0 && tokens[0].type == 'addop') {
 			var temppt = eparse;
 			eparse = ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
 		}
@@ -47,7 +47,7 @@ var Parse = (function() {
 	function parseTM(env, tokens) {
 		var tmparse = parseF(env, tokens);
 		
-		while(tokens.length != 0 && tokens[0].type == 'mulop') {
+		while(tokens.length > 0 && tokens[0].type == 'mulop') {
 			var temppt = tmparse;
 			tmparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 		}
@@ -58,7 +58,7 @@ var Parse = (function() {
 	function parseF(env, tokens) {
 		var fparse;
 		
-		if(tokens.length == 0)
+		if(tokens.length === 0)
 			throw new Error('Expected a factor');
 		
 		if(tokens[0].type == 'negate')
@@ -66,7 +66,7 @@ var Parse = (function() {
 		else {
 			fparse = parseDAT(env, tokens);
 			
-			if(tokens.length != 0 && tokens[0].type == 'pow') {
+			if(tokens.length > 0 && tokens[0].type == 'pow') {
 				var temppt = fparse;
 				fparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 			}
@@ -108,8 +108,8 @@ var Parse = (function() {
 		return fnparse;
 	}
 	
-	function parseDAT(env, tokens) {		
-		if(tokens.length == 0)
+	function parseDAT(env, tokens) {
+		if(tokens.length === 0)
 			throw new Error('Expected a datum');
 		
 		switch(tokens[0].type) {
@@ -133,7 +133,7 @@ var Parse = (function() {
 	}
 	
 	function eatMandToken(tokens, type, friendly, hint) {
-		if(tokens.length == 0 || tokens[0].type != type) {
+		if(tokens.length === 0 || tokens[0].type != type) {
 			var errStr = 'Expected ' + (friendly || type);
 			if(hint) errStr += ' - ' + hint;
 			throw new Error(errStr);

@@ -1,0 +1,22 @@
+var JSG = (function() {
+    'use strict';
+
+    %CODE%
+
+    return { Expr: {
+                compile: Expr.compile,
+                oneshot: Expr.oneshot,
+                
+                Compile: Compile,
+                
+                NativeOp: NativeOp,
+                NativeFn: NativeFn,
+                Environment: Environment,
+                
+                Lex: Lex,
+                Token: Token,
+                FnCall: FnCall,
+             
+                Parse: Parse }
+           };
+})();
