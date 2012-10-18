@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" />
+
+<script type="text/javascript" src="environment.js" />
+<script type="text/javascript" src="lexer.js" />
+<script type="text/javascript" src="parser.js" />
+<script type="text/javascript" src="compiler.js" />
+<script type="text/javascript" src="expr.js" />
+<script type="text/javascript">
+<![CDATA[
+
+/*var f1 = function(x, y) { return Math.pow(Math.sin(x) * Math.cos(y), 2) / (x * y); };
+var f2 = Expr.compile('x', 'y', '(sin(x)cos(y))^2/(xy)');
+console.log(f2.toString());
+
+var N = 1000000;
+
+function test1() {
+	for(var i = 0; i < N; i++)
+		f1(2, 3);
+}
+
+function test2() {
+	for(var i = 0; i < N; i++)
+		f2(2, 3);
+};
+	
+var s, e;
+
+s = new Date().getTime();
+test1();
+e = new Date().getTime();
+console.log(e - s);
+
+s = new Date().getTime();
+test2();
+e = new Date().getTime();
+console.log(e - s);*/
+
+function init() {
+	$('#frm').submit(function(e) {
+		e.preventDefault();
+	
+		var vars = $('#vars').val().split(','),
+			vals = $('#vals').val().split(','),
+			env = Environment(vars,
+							  !$('#implicitMul').prop('checked'),
+							  !$('#powOp').prop('checked'),
+							  !$('#arityCheck').prop('checked')),
+			f,
+			res;
+		
+		// Add a sample n-arity function for kicks
+		var sumFn = function() {
+			var sum = 0;
+			for(var i = 0; i < arguments.length; i++)
+				sum += arguments[i];
+			
+			return sum;
+		};
+		sumFn.lengthIsMinimum = true;
+		env.addFn('sum', sumFn);
+			
+		try {
+			f = Expr.compile(env, $('#expr').val()),
+			res = f.apply(null, vals);
+			$('#res').text(res);
+			$('#fn').text(f.toString());
+		}
+		catch(exc) {
+			$('#res').text('Error: ' + exc.message);
+		}
+	});
+}
+
+$(init);
+
+]]>
+</script>
+</head>
+<body>
+<form id='frm'>
+<label for="vars">Variables </label><input id="vars" value="x,y" /><br />
+<label for="expr">Expression </label><input id="expr" value="2xy" /><br />
+<label for="vals">Values </label><input id="vals" value="2, 4" /><br />
+<fieldset>
+	<legend>Options</legend>
+	<input type="checkbox" id="implicitMul" checked="checked" />
+	<label for="implicitMul">Implicit multiplication</label><br/>
+	<input type="checkbox" id="powOp" checked="checked" />
+	<label for="powOp">Exponentiation operator (^)</label><br/>
+	<input type="checkbox" id="arityCheck" checked="checked" />
+	<label for="arityCheck">Parse-time arity checks</label>
+</fieldset>
+<input type="submit" value="Evaluate" id="go" />
+</form>
+<div id="res" />
+<div id="fn" />
+</body>
+</html>
