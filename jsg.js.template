@@ -1,6 +1,5 @@
 var JSG = (function() {
     'use strict';
-
     %CODE%
 
     return { Expr: {

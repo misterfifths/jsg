@@ -1,6 +1,8 @@
 var JSG = (function() {
     'use strict';
 
+/** environment.js **/
+
 // TODO: these as parts of Environment
 var NativeOp = function(name, length) {
 	if(!(this instanceof NativeOp))
@@ -213,7 +215,11 @@ var Environment = (function() {
 	}
 	
 	return Environment;
-})();var Token = function(type, val) {
+})();
+
+/** lexer.js **/
+
+var Token = function(type, val) {
 	if(!(this instanceof Token))
 		return new Token(type, val);
 
@@ -395,7 +401,11 @@ var Lex = (function() {
 		
 		state.s = state.s.substring(1);
 	}
-})();var Parse = (function() {
+})();
+
+/** parser.js **/
+
+var Parse = (function() {
 	var ParseTree = function(root, children) {
 		if(!(this instanceof ParseTree))
 			return new ParseTree(root, children);
@@ -538,7 +548,11 @@ var Lex = (function() {
 		
 		return tokens.shift();
 	}
-})();var Expr = (function() {
+})();
+
+/** expr.js **/
+
+var Expr = (function() {
 	function compile() {
 		var env, s;
 		
@@ -615,7 +629,11 @@ var Lex = (function() {
 		compile: compile,
 		oneshot: oneshot
 	};
-})();var Compile = (function() {
+})();
+
+/** compiler.js **/
+
+var Compile = (function() {
 	return function(env, parseTree) {
 		// tokToStr assumes the name of the environment inside the string
 		// function body will be 'env'. This is a safe assumption until we
@@ -725,6 +743,7 @@ var Lex = (function() {
 		return s;
 	}
 })();
+
     return { Expr: {
                 compile: Expr.compile,
                 oneshot: Expr.oneshot,

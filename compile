@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat {environment,lexer,parser,expr,compiler}.js |
+awk 'FNR==1 { print "\n/** " FILENAME " **/\n" }1' {environment,lexer,parser,expr,compiler}.js |
 sed -e '/%CODE%/{r /dev/stdin
 d
 }' jsg.js.template > build/jsg.js
