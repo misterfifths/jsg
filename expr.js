@@ -1,5 +1,5 @@
 var Expr = (function() {
-	function compile() {
+	function exprCompile() {
 		var env, s;
 		
 		switch(arguments.length) {
@@ -42,7 +42,7 @@ var Expr = (function() {
 				s = arguments[arguments.length - 1];
 		}
 		
-		return Compile(env, Parse(env, Lex(env, s)));
+		return compile(env, parse(env, lex(env, s)));
 	}
 	
 	function oneshot(vars, s) {
@@ -68,11 +68,24 @@ var Expr = (function() {
 			env = Environment(vns);
 		}
 		
-		return Compile(env, Parse(env, Lex(env, s))).apply(null, vals);
+		return compile(env, parse(env, lex(env, s))).apply(null, vals);
 	}
 	
 	return {
-		compile: compile,
-		oneshot: oneshot
-	};
+	    compile: exprCompile,
+        oneshot: oneshot,
+
+        Environment: Environment,
+        NativeOp: NativeOp,
+        NativeFn: NativeFn,
+        
+        Core: {
+            compile: compile,
+            lex: lex,
+            parse: parse,
+            
+            Token: Token,
+            FnCall: FnCall
+        }
+    };
 })();

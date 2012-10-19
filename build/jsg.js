@@ -237,7 +237,7 @@ var FnCall = function(env, name) {
 	this.envVal = env.getFnVal(name);
 };
 
-var Lex = (function() {
+var lex = (function() {
 	var idRegex = /^([A-Za-z_][A-Za-z_0-9]*)(.*)/,
 		numRegex = /^([0-9]*\.?[0-9]+)(.*)/,
 		simpleNumRegex = /^[0-9.]/;
@@ -406,7 +406,7 @@ var Lex = (function() {
 
 /** parser.js **/
 
-var Parse = (function() {
+var parse = (function() {
 	var ParseTree = function(root, children) {
 		if(!(this instanceof ParseTree))
 			return new ParseTree(root, children);
@@ -552,10 +552,150 @@ var Parse = (function() {
 	}
 })();
 
+/** compiler.js **/
+
+var compile = (function() {
+    function internalCompile(env, parseTree, skipOptimizations) {
+		skipOptimizations = !!skipOptimizations;
+		
+		// envAccumulator becomes a map of all the things used from the
+		// Environment in the final compiled form of the function. It is from
+		// names in the eval string to the version that reference 'env', so we
+		// can reflect them into eval-space in a Closure Compiler-safe way.
+		// We have to ensure 'env' is the actual name for env after Closure has
+		// its way, though... hence that final variable we add at the end.
+		// The names in the eval code are mangled using the function below so
+		// we are less likely to get issues if, say, the user names a variable
+		// something like "env".
+		
+	    var args = env.vars.join(','),
+	        envAccumulator = {},
+	        body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, !skipOptimizations) + '; })',
+	        props = Object.getOwnPropertyNames(envAccumulator);
+
+	    for(var i = 0; i < props.length; i++) {
+	        var propName = props[i];
+	        body = 'var ' + propName + ' = ' + envAccumulator[propName] + '; ' + body;
+	    }
+	    
+	    if(props.length > 0)
+	        body = 'var env = arguments[0]; ' + body;
+	    
+	    return eval(body);
+    }
+    
+    return internalCompile;
+	
+	function mangleNameForEval(name) {
+	    return '__env_' + name + '__';
+	}
+	
+	function tokToStr(env, tok, envAccumulator) {
+		var mangledName, s;
+		
+		if(tok.val instanceof FnCall) {
+			if(tok.val.envVal instanceof NativeFn)
+				return tok.val.envVal.name;
+			if(tok.val.envVal instanceof NativeOp)
+				return tok.val.envVal.name;
+		}
+		
+		switch(tok.type) {
+			case 'num':
+			case 'const':
+				return tok.val.toString();
+			
+			case 'var':
+				return tok.val;
+				
+			case 'negate':
+			case 'pow':
+			    mangledName = mangleNameForEval(tok.val.name);
+			    if(envAccumulator)
+                    envAccumulator[mangledName] = 'env["' + tok.val.name + '"]';
+
+			    return mangledName;
+			
+			case 'mulop': s = 'mulops'; break;
+			case 'addop': s = 'addops'; break;
+			case 'fn': s = 'fns'; break;
+		}
+		
+		mangledName = mangleNameForEval(tok.val.name);
+		
+		if(envAccumulator)
+            envAccumulator[mangledName] = 'env.' + s + '["' + tok.val.name + '"]';
+        
+		return mangledName;
+	}
+	
+	function tokIsFn(tok) {
+		return tok.val instanceof FnCall && !(tok.val.envVal instanceof NativeOp);
+	}
+	
+	function tokIsNativeOp(tok) {
+		return tok.val instanceof FnCall && tok.val.envVal instanceof NativeOp;
+	}
+	
+	function ptToStr(env, pt, envAccumulator, optimize) {
+		var rootIsFn = tokIsFn(pt.root),
+			rootIsOp = tokIsNativeOp(pt.root),
+			s, t;
+		
+		// Numbers and constants can just pass through; no need to go through
+		// the whole compile() shebang on them.
+		if(pt.root.type == 'num' || pt.root.type == 'const')
+		    return tokToStr(env, pt.root);
+		
+		if(optimize !== false && pt.isConstant()) {
+		    // If this parse tree is constant, generate a function out of it and
+            // replace the whole shebang with its value. Note that it's fine
+            // to call the resulting argument with no values (i.e., all arguments
+            // undefined) because we're guaranteed the parsetree contains no
+            // variables (otherwise it wouldn't be constant).
+            // We obviously have to turn off optimizations in this go-round,
+            // or we'll just recurse endlessly.
+			return internalCompile(env, pt, true)().toString();
+		}
+		
+		// Otherwise, convert other things as appropriate...
+		s = tokToStr(env, pt.root, envAccumulator);
+		
+        if(rootIsFn)
+           s += '(';
+        else if(rootIsOp) {
+           t = s;
+           s = '(';
+        }
+		
+		if(rootIsOp) {
+			if(pt.children.length == 1)
+				s += t + ptToStr(env, pt.children[0], envAccumulator);
+			else if(pt.children.length == 2)
+				s += ptToStr(env, pt.children[0], envAccumulator) + ' ' + t + ' ' + ptToStr(env, pt.children[1], envAccumulator);
+			else
+				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments');
+		}
+		else if(pt.children) {
+			for(var i = 0; i < pt.children.length; i++) {
+				s += ptToStr(env, pt.children[i], envAccumulator);
+				
+				if(rootIsFn && i != pt.children.length - 1)
+					s += ', ';
+			}
+		}
+		
+		if(rootIsFn || rootIsOp)
+			s += ')';
+			
+		return s;
+	}
+})();
+
 /** expr.js **/
 
 var Expr = (function() {
-	function compile() {
+	function exprCompile() {
 		var env, s;
 		
 		switch(arguments.length) {
@@ -598,7 +738,7 @@ var Expr = (function() {
 				s = arguments[arguments.length - 1];
 		}
 		
-		return Compile(env, Parse(env, Lex(env, s)));
+		return compile(env, parse(env, lex(env, s)));
 	}
 	
 	function oneshot(vars, s) {
@@ -624,128 +764,27 @@ var Expr = (function() {
 			env = Environment(vns);
 		}
 		
-		return Compile(env, Parse(env, Lex(env, s))).apply(null, vals);
+		return compile(env, parse(env, lex(env, s))).apply(null, vals);
 	}
 	
 	return {
-		compile: compile,
-		oneshot: oneshot
-	};
+	    compile: exprCompile,
+        oneshot: oneshot,
+
+        Environment: Environment,
+        NativeOp: NativeOp,
+        NativeFn: NativeFn,
+        
+        Core: {
+            compile: compile,
+            lex: lex,
+            parse: parse,
+            
+            Token: Token,
+            FnCall: FnCall
+        }
+    };
 })();
 
-/** compiler.js **/
-
-var Compile = (function() {
-	return function(env, parseTree) {
-		// tokToStr assumes the name of the environment inside the string
-		// function body will be 'env'. This is a safe assumption until we
-		// compile with Closure, where we loose that guarantee.
-		// So here we force it back to having that name in the eval. A little
-		// janky, but not terrible.
-		
-	    var args = env.vars.join(','),
-	        body = 'var env = arguments[0]; (function(' + args + ') { return ' + ptToStr(env, parseTree) + '; })';
-	    
-	    return eval(body);
-	};
-	
-	function tokToStr(env, tok) {
-		var s;
-		
-		if(tok.val instanceof FnCall) {
-			if(tok.val.envVal instanceof NativeFn)
-				return tok.val.envVal.name;
-			if(tok.val.envVal instanceof NativeOp)
-				return tok.val.envVal.name;
-		}
-		
-		switch(tok.type) {
-			case 'num':
-			case 'const':
-				return tok.val.toString();
-			
-			case 'var':
-				return tok.val;
-				
-			case 'negate':
-			case 'pow':
-				return 'env["' + tok.val.name + '"]';
-			
-			case 'mulop': s = 'mulops'; break;
-			case 'addop': s = 'addops'; break;
-			case 'fn': s = 'fns'; break;
-		}
-		
-		return 'env.' + s + '["' + tok.val.name + '"]';
-	}
-	
-	function tokIsFn(tok) {
-		return tok.val instanceof FnCall && !(tok.val.envVal instanceof NativeOp);
-	}
-	
-	function tokIsNativeOp(tok) {
-		return tok.val instanceof FnCall && tok.val.envVal instanceof NativeOp;
-	}
-	
-	function ptToStr(env, pt, optimize) {
-		var rootIsFn = tokIsFn(pt.root),
-			rootIsOp = tokIsNativeOp(pt.root),
-			s = tokToStr(env, pt.root),
-			t;
-		
-		if(rootIsFn)
-			s += '(';
-		else if(rootIsOp) {
-			t = s;
-			s = '(';
-		}
-		
-		if(optimize !== false && pt.isConstant()) {
-		    // Yes, this is glorified eval().
-		    // Same Closure issue as above; we need to get the environment into
-		    // the eval'ed code with the literal name 'env'.
-			var evalFn = new Function('env', 'return ' + ptToStr(env, pt, false));
-			
-			return evalFn(env).toString();
-		}
-		else if(rootIsOp) {
-			if(pt.children.length == 1)
-				s += t + ptToStr(env, pt.children[0]);
-			else if(pt.children.length == 2)
-				s += ptToStr(env, pt.children[0]) + ' ' + t + ' ' + ptToStr(env, pt.children[1]);
-			else
-				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments');
-		}
-		else if(pt.children) {
-			for(var i = 0; i < pt.children.length; i++) {
-				s += ptToStr(env, pt.children[i]);
-				
-				if(rootIsFn && i != pt.children.length - 1)
-					s += ', ';
-			}
-		}
-		
-		if(rootIsFn || rootIsOp)
-			s += ')';
-			
-		return s;
-	}
-})();
-
-    return { Expr: {
-                compile: Expr.compile,
-                oneshot: Expr.oneshot,
-                
-                Compile: Compile,
-                
-                NativeOp: NativeOp,
-                NativeFn: NativeFn,
-                Environment: Environment,
-                
-                Lex: Lex,
-                Token: Token,
-                FnCall: FnCall,
-             
-                Parse: Parse }
-           };
+    return { Expr: Expr };
 })();

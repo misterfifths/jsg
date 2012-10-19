@@ -15,7 +15,7 @@ var FnCall = function(env, name) {
 	this.envVal = env.getFnVal(name);
 };
 
-var Lex = (function() {
+var lex = (function() {
 	var idRegex = /^([A-Za-z_][A-Za-z_0-9]*)(.*)/,
 		numRegex = /^([0-9]*\.?[0-9]+)(.*)/,
 		simpleNumRegex = /^[0-9.]/;

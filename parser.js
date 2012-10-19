@@ -1,4 +1,4 @@
-var Parse = (function() {
+var parse = (function() {
 	var ParseTree = function(root, children) {
 		if(!(this instanceof ParseTree))
 			return new ParseTree(root, children);
