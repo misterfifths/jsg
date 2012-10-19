@@ -6,10 +6,12 @@ var JSG = (function() {
 // TODO: these as parts of Environment
 var NativeOp = function(name, length) {
 	if(!(this instanceof NativeOp))
-		return new NativeOp(name);
+		return new NativeOp(name, length);
 
 	this.name = name;
 	this.length = length;
+	this.lengthIsMinimum = false;
+	this.nondeterministic = false;
 };
 
 var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
