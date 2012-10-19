@@ -12,13 +12,14 @@ var NativeOp = function(name, length) {
 	this.length = length;
 };
 
-var NativeFn = function(name, length, lengthIsMinimum) {
+var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 	if(!(this instanceof NativeFn))
 		return new NativeFn(name, length, lengthIsMinimum);
 	
 	this.name = name;
 	this.length = length;
 	this.lengthIsMinimum = !!lengthIsMinimum;
+	this.nondeterministic = !!nondeterministic;
 };
 
 var Environment = (function() {
@@ -86,8 +87,8 @@ var Environment = (function() {
 		ceiling: NativeFn('Math.ceil', 1),
 		round: NativeFn('Math.round', 1),
 		random: NativeFn('Math.random', 0),
-		rnd: NativeFn('Math.random', 0),
-		rand: NativeFn('Math.random', 0),
+		rnd: NativeFn('Math.random', 0, false, true),
+		rand: NativeFn('Math.random', 0, false, true),
 		mod: NativeOp('%', 2)
 	};
 	
@@ -420,6 +421,7 @@ var Parse = (function() {
 	
 	ParseTree.prototype.isConstant = function() {
 		return this.root.type != 'var' &&
+		       !(this.root.type == 'fn' && this.root.val.envVal.nondeterministic) &&
 		       (this.isLeaf() || areConstant(this.children));
 	};
 	

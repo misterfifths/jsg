@@ -13,6 +13,7 @@ var Parse = (function() {
 	
 	ParseTree.prototype.isConstant = function() {
 		return this.root.type != 'var' &&
+		       !(this.root.type == 'fn' && this.root.val.envVal.nondeterministic) &&
 		       (this.isLeaf() || areConstant(this.children));
 	};
 	
