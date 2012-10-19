@@ -14,7 +14,7 @@ var NativeOp = function(name, length) {
 
 var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 	if(!(this instanceof NativeFn))
-		return new NativeFn(name, length, lengthIsMinimum);
+		return new NativeFn(name, length, lengthIsMinimum, nondeterministic);
 	
 	this.name = name;
 	this.length = length;
@@ -86,7 +86,7 @@ var Environment = (function() {
 		ceil: NativeFn('Math.ceil', 1),
 		ceiling: NativeFn('Math.ceil', 1),
 		round: NativeFn('Math.round', 1),
-		random: NativeFn('Math.random', 0),
+		random: NativeFn('Math.random', 0, false, true),
 		rnd: NativeFn('Math.random', 0, false, true),
 		rand: NativeFn('Math.random', 0, false, true),
 		mod: NativeOp('%', 2)
