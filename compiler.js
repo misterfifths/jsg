@@ -60,8 +60,8 @@ var compile = (function() {
 
 			    return mangledName;
 			
-			case TokenType.MulOp: s = 'mulops'; break;
-			case TokenType.AddOp: s = 'addops'; break;
+			case TokenType.MulOp: s = 'mulOps'; break;
+			case TokenType.AddOp: s = 'addOps'; break;
 			case TokenType.Fn: s = 'fns'; break;
 		}
 		

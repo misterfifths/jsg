@@ -31,8 +31,8 @@ var Environment = (function() {
 	
 		this.fns = clone(defFns);
 		this.consts = clone(defConsts);
-		this.addops = clone(defAddOps);
-		this.mulops = clone(defMulOps);
+		this.addOps = clone(defAddOps);
+		this.mulOps = clone(defMulOps);
 		
 		this.noImplicitMul = !!noImplicitMul;
 		this.noPowOp = !!noPowOp;
@@ -130,9 +130,11 @@ var Environment = (function() {
 	
 	var eproto = Environment.prototype;
 	
-	eproto.addVar = function(name) {
-		dieIfBadId(this, name);
-		this.vars.push(name);
+	eproto.setVars = function(names) {
+	    for(var i = 0; i < names.length; i++)
+	        dieIfBadId(this, name);
+        
+        this.vars = names.slice(0);
 	};
 	
 	eproto.addFn = function(name, fn) {
@@ -140,19 +142,35 @@ var Environment = (function() {
 		this.fns[name] = fn;
 	};
 	
+	eproto.removeFn = function(name) {
+	    delete this.fns[name];
+	};
+	
 	eproto.addConst = function(name, val) {
 		dieIfBadId(this, name);
 		this.consts[name] = val;
 	};
 	
+	eproto.removeConst = function(name) {
+	    delete this.consts[name];
+	};
+	
 	eproto.addAddOp = function(name, fn) {
 		dieIfBadOp(this, name, fn);
-		this.addops[name] = fn;
+		this.addOps[name] = fn;
+	};
+	
+	eproto.removeAddOp = function(name) {
+	    delete this.addOps[name];
 	};
 	
 	eproto.addMulOp = function(name, fn) {
 		dieIfBadOp(this, name, fn);
-		this.mulops[name] = fn;
+		this.mulOps[name] = fn;
+	};
+	
+	eproto.removeMulOp = function(name) {
+	    delete this.mulOps[name];
 	};
 	
 	eproto.isVarName = function(name) {
@@ -170,16 +188,16 @@ var Environment = (function() {
 	};
 	
 	eproto.isAddOp = function(name) {
-		return this.addops.hasOwnProperty(name);
+		return this.addOps.hasOwnProperty(name);
 	};
 	
 	eproto.isMulOp = function(name) {
-		return this.mulops.hasOwnProperty(name);
+		return this.mulOps.hasOwnProperty(name);
 	};
 	
 	eproto.getFnVal = function(name) {
-		if(this.isMulOp(name)) return this.mulops[name];
-		if(this.isAddOp(name)) return this.addops[name];
+		if(this.isMulOp(name)) return this.mulOps[name];
+		if(this.isAddOp(name)) return this.addOps[name];
 		if(name == '_pow') return this._pow;
 		if(name == '_negate') return this._negate;
 		return this.fns[name];
@@ -632,8 +650,8 @@ var compile = (function() {
 
 			    return mangledName;
 			
-			case TokenType.MulOp: s = 'mulops'; break;
-			case TokenType.AddOp: s = 'addops'; break;
+			case TokenType.MulOp: s = 'mulOps'; break;
+			case TokenType.AddOp: s = 'addOps'; break;
 			case TokenType.Fn: s = 'fns'; break;
 		}
 		
