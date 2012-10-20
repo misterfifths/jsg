@@ -626,14 +626,16 @@ var compile = (function() {
 	    var args = env.vars.join(','),
 	        envAccumulator = {},
 	        body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, !skipOptimizations) + '; })',
-	        props = Object.getOwnPropertyNames(envAccumulator);
-
-	    for(var i = 0; i < props.length; i++) {
-	        var propName = props[i];
-	        body = 'var ' + propName + ' = ' + envAccumulator[propName] + '; ' + body;
+	        envAccumulatorHasProps = false;
+	    
+	    for(var propName in envAccumulator) {
+	        if(envAccumulator.hasOwnProperty(propName)) {
+	            envAccumulatorHasProps = true;
+	            body = 'var ' + propName + ' = ' + envAccumulator[propName] + '; ' + body;
+	        }
 	    }
 	    
-	    if(props.length > 0)
+	    if(envAccumulatorHasProps)
 	        body = 'var env = arguments[0]; ' + body;
 	    
 	    return eval(body);
