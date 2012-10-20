@@ -230,6 +230,20 @@ var Token = function(type, val) {
 	this.val = val;
 };
 
+var TokenType = {
+    Num: 'num',
+    Const: 'const',
+    Var: 'var',
+    Negate: 'negate',
+    Pow: 'pow',
+    MulOp: 'mulop',
+    AddOp: 'addop',
+    Fn: 'fn',
+    LP: 'lp',
+    RP: 'rp',
+    Comma: 'comma'
+};
+
 var FnCall = function(env, name) {
 	if(!(this instanceof FnCall))
 		return new FnCall(env, name);
@@ -261,17 +275,17 @@ var lex = (function() {
 		switch(state.s.charAt(0)) {
 			case '(':
 				addImplicitMul(state);
-				pushToken(state, 'lp');
+				pushToken(state, TokenType.LP);
 				state.s = state.s.substring(1);
 				return;
 			
 			case ')':
-				pushToken(state, 'rp');
+				pushToken(state, TokenType.RP);
 				state.s = state.s.substring(1);
 				return;
 				
 			case ',':
-				pushToken(state, 'comma');
+				pushToken(state, TokenType.Comma);
 				state.s = state.s.substring(1);
 				return;
 			
@@ -307,11 +321,11 @@ var lex = (function() {
 		if(state.env.noImplicitMul || state.tokens.length === 0) return;
 		
 		var lastType = state.tokens[state.tokens.length - 1].type;
-		if(lastType == 'rp' ||
-		   lastType == 'var' ||
-		   lastType == 'const' ||
-		   (numOk && lastType == 'num'))
-                pushFnToken(state, 'mulop', state.env._implicitMulOpId);
+		if(lastType == TokenType.RP ||
+		   lastType == TokenType.Var ||
+		   lastType == TokenType.Const ||
+		   (numOk && lastType == TokenType.Num))
+                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId);
 	}
 	
 	function lexNum(state) {
@@ -319,7 +333,7 @@ var lex = (function() {
 		if(!res) throw new Error('Expected a number');
 		
 		addImplicitMul(state, false);
-		pushToken(state, 'num', parseFloat(res[1]));
+		pushToken(state, TokenType.Num, parseFloat(res[1]));
 		state.s = res[2];
 	}
 	
@@ -359,9 +373,9 @@ var lex = (function() {
 		var tok,
 			env = state.env;
 		
-		if(env.isFnName(id)) tok = Token('fn', FnCall(state.env, id));
-		else if(env.isConst(id)) tok = Token('const', env.consts[id]);
-		else if(env.isVarName(id)) tok = Token('var', id);
+		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id));
+		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id]);
+		else if(env.isVarName(id)) tok = Token(TokenType.Var, id);
 		
 		return tok;
 	}
@@ -370,9 +384,9 @@ var lex = (function() {
 		if(state.s.charAt(0) != '-') throw new Error('Expected a minus');
 		
 		if(shouldNegate(state))
-			pushFnToken(state, 'negate', '_negate');
+			pushFnToken(state, TokenType.Negate, '_negate');
 		else
-			pushFnToken(state, 'addop', state.env._subtractOpId);
+			pushFnToken(state, TokenType.AddOp, state.env._subtractOpId);
 			
 		state.s = state.s.substring(1);
 	}
@@ -381,12 +395,12 @@ var lex = (function() {
 		if(state.tokens.length === 0) return true;
 		
 		var last = state.tokens[state.tokens.length - 1];
-		return last.type == 'lp' ||
-			   last.type == 'addop' ||
-			   last.type == 'mulop' ||
-			   last.type == 'comma' ||
-			   last.type == 'pow' ||
-			   last.type == 'negate';
+		return last.type == TokenType.LP ||
+			   last.type == TokenType.AddOp ||
+			   last.type == TokenType.MulOp ||
+			   last.type == TokenType.Comma ||
+			   last.type == TokenType.Pow ||
+			   last.type == TokenType.Negate;
 	}
 	
 	function lexOp(state) {
@@ -394,11 +408,11 @@ var lex = (function() {
 			env = state.env;
 		
 		if(env.isAddOp(c))
-			pushFnToken(state, 'addop', c);
+			pushFnToken(state, TokenType.AddOp, c);
 		else if(env.isMulOp(c))
-			pushFnToken(state, 'mulop', c);
+			pushFnToken(state, TokenType.MulOp, c);
 		else if(!env.noPowOp && c == env._powOpId)
-			pushFnToken(state, 'pow', '_pow');
+			pushFnToken(state, TokenType.Pow, '_pow');
 		else
 			throw new Error('Expected an operator');
 		
@@ -416,14 +430,14 @@ var parse = (function() {
 		this.root = root;
 		this.children = children;
 	};
-		
+	
 	ParseTree.prototype.isLeaf = function() {
 		return !this.children || this.children.length === 0;
 	};
 	
 	ParseTree.prototype.isConstant = function() {
-		return this.root.type != 'var' &&
-		       !(this.root.type == 'fn' && this.root.val.envVal.nondeterministic) &&
+		return this.root.type != TokenType.Var &&
+		       !(this.root.type == TokenType.Fn && this.root.val.envVal.nondeterministic) &&
 		       (this.isLeaf() || areConstant(this.children));
 	};
 	
@@ -447,7 +461,7 @@ var parse = (function() {
 	function parseE(env, tokens) {
 		var eparse = parseTM(env, tokens);
 			
-		while(tokens.length > 0 && tokens[0].type == 'addop') {
+		while(tokens.length > 0 && tokens[0].type == TokenType.AddOp) {
 			var temppt = eparse;
 			eparse = ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
 		}
@@ -458,7 +472,7 @@ var parse = (function() {
 	function parseTM(env, tokens) {
 		var tmparse = parseF(env, tokens);
 		
-		while(tokens.length > 0 && tokens[0].type == 'mulop') {
+		while(tokens.length > 0 && tokens[0].type == TokenType.MulOp) {
 			var temppt = tmparse;
 			tmparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 		}
@@ -472,12 +486,12 @@ var parse = (function() {
 		if(tokens.length === 0)
 			throw new Error('Expected a factor');
 		
-		if(tokens[0].type == 'negate')
+		if(tokens[0].type == TokenType.Negate)
 			fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
 		else {
 			fparse = parseDAT(env, tokens);
 			
-			if(tokens.length > 0 && tokens[0].type == 'pow') {
+			if(tokens.length > 0 && tokens[0].type == TokenType.Pow) {
 				var temppt = fparse;
 				fparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 			}
@@ -487,24 +501,24 @@ var parse = (function() {
 	}
 	
 	function parseFN(env, tokens) {
-		var head = eatMandToken(tokens, 'fn', 'function name'),
+		var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
 			fnparse = ParseTree(head, []);
 		
-		eatMandToken(tokens, 'lp', 'left parenthesis', 'Functions must be followed by an opening parenthesis');
+		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis');
 
-		if(tokens[0].type == 'rp')
+		if(tokens[0].type == TokenType.RP)
 			tokens.shift();
 		else {
 			fnparse.children.push(parseE(env, tokens));
 			head.val.argCount++;
 			
-			while(tokens[0].type != 'rp') {
-				eatMandToken(tokens, 'comma', 'comma', 'Too few arguments to a function?');
+			while(tokens[0].type != TokenType.RP) {
+				eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to a function?');
 				fnparse.children.push(parseE(env, tokens));
 				head.val.argCount++;
 			}
 			
-			eatMandToken(tokens, 'rp', 'right parenthesis', 'Too many arguments to a function?');
+			eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Too many arguments to a function?');
 		}
 		
 		if(!env.noArityCheck) {
@@ -524,18 +538,18 @@ var parse = (function() {
 			throw new Error('Expected a datum');
 		
 		switch(tokens[0].type) {
-			case 'var':
-			case 'num':
-			case 'const':
+			case TokenType.Var:
+			case TokenType.Num:
+			case TokenType.Const:
 				return ParseTree(tokens.shift());
 				
-			case 'fn':
+			case TokenType.Fn:
 				return parseFN(env, tokens);
 				
-			case 'lp':
+			case TokenType.LP:
 				tokens.shift();
 				var eparse = parseE(env, tokens);
-				eatMandToken(tokens, 'rp', 'right parenthesis', 'Mismatched parentheses');
+				eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Mismatched parentheses');
 				return eparse;
 				
 			default:
@@ -603,24 +617,24 @@ var compile = (function() {
 		}
 		
 		switch(tok.type) {
-			case 'num':
-			case 'const':
+			case TokenType.Num:
+			case TokenType.Const:
 				return tok.val.toString();
 			
-			case 'var':
+			case TokenType.Var:
 				return tok.val;
 				
-			case 'negate':
-			case 'pow':
+			case TokenType.Negate:
+			case TokenType.Pow:
 			    mangledName = mangleNameForEval(tok.val.name);
 			    if(envAccumulator)
                     envAccumulator[mangledName] = 'env["' + tok.val.name + '"]';
 
 			    return mangledName;
 			
-			case 'mulop': s = 'mulops'; break;
-			case 'addop': s = 'addops'; break;
-			case 'fn': s = 'fns'; break;
+			case TokenType.MulOp: s = 'mulops'; break;
+			case TokenType.AddOp: s = 'addops'; break;
+			case TokenType.Fn: s = 'fns'; break;
 		}
 		
 		mangledName = mangleNameForEval(tok.val.name);
@@ -646,7 +660,7 @@ var compile = (function() {
 		
 		// Numbers and constants can just pass through; no need to go through
 		// the whole compile() shebang on them.
-		if(pt.root.type == 'num' || pt.root.type == 'const')
+		if(pt.root.type == TokenType.Num || pt.root.type == TokenType.Const)
 		    return tokToStr(env, pt.root);
 		
 		if(optimize !== false && pt.isConstant()) {
@@ -783,6 +797,7 @@ var Expr = (function() {
             parse: parse,
             
             Token: Token,
+            TokenType: TokenType,
             FnCall: FnCall
         }
     };

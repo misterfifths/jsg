@@ -85,6 +85,7 @@ var Expr = (function() {
             parse: parse,
             
             Token: Token,
+            TokenType: TokenType,
             FnCall: FnCall
         }
     };

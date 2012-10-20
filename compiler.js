@@ -45,24 +45,24 @@ var compile = (function() {
 		}
 		
 		switch(tok.type) {
-			case 'num':
-			case 'const':
+			case TokenType.Num:
+			case TokenType.Const:
 				return tok.val.toString();
 			
-			case 'var':
+			case TokenType.Var:
 				return tok.val;
 				
-			case 'negate':
-			case 'pow':
+			case TokenType.Negate:
+			case TokenType.Pow:
 			    mangledName = mangleNameForEval(tok.val.name);
 			    if(envAccumulator)
                     envAccumulator[mangledName] = 'env["' + tok.val.name + '"]';
 
 			    return mangledName;
 			
-			case 'mulop': s = 'mulops'; break;
-			case 'addop': s = 'addops'; break;
-			case 'fn': s = 'fns'; break;
+			case TokenType.MulOp: s = 'mulops'; break;
+			case TokenType.AddOp: s = 'addops'; break;
+			case TokenType.Fn: s = 'fns'; break;
 		}
 		
 		mangledName = mangleNameForEval(tok.val.name);
@@ -88,7 +88,7 @@ var compile = (function() {
 		
 		// Numbers and constants can just pass through; no need to go through
 		// the whole compile() shebang on them.
-		if(pt.root.type == 'num' || pt.root.type == 'const')
+		if(pt.root.type == TokenType.Num || pt.root.type == TokenType.Const)
 		    return tokToStr(env, pt.root);
 		
 		if(optimize !== false && pt.isConstant()) {

@@ -6,6 +6,20 @@ var Token = function(type, val) {
 	this.val = val;
 };
 
+var TokenType = {
+    Num: 'num',
+    Const: 'const',
+    Var: 'var',
+    Negate: 'negate',
+    Pow: 'pow',
+    MulOp: 'mulop',
+    AddOp: 'addop',
+    Fn: 'fn',
+    LP: 'lp',
+    RP: 'rp',
+    Comma: 'comma'
+};
+
 var FnCall = function(env, name) {
 	if(!(this instanceof FnCall))
 		return new FnCall(env, name);
@@ -37,17 +51,17 @@ var lex = (function() {
 		switch(state.s.charAt(0)) {
 			case '(':
 				addImplicitMul(state);
-				pushToken(state, 'lp');
+				pushToken(state, TokenType.LP);
 				state.s = state.s.substring(1);
 				return;
 			
 			case ')':
-				pushToken(state, 'rp');
+				pushToken(state, TokenType.RP);
 				state.s = state.s.substring(1);
 				return;
 				
 			case ',':
-				pushToken(state, 'comma');
+				pushToken(state, TokenType.Comma);
 				state.s = state.s.substring(1);
 				return;
 			
@@ -83,11 +97,11 @@ var lex = (function() {
 		if(state.env.noImplicitMul || state.tokens.length === 0) return;
 		
 		var lastType = state.tokens[state.tokens.length - 1].type;
-		if(lastType == 'rp' ||
-		   lastType == 'var' ||
-		   lastType == 'const' ||
-		   (numOk && lastType == 'num'))
-                pushFnToken(state, 'mulop', state.env._implicitMulOpId);
+		if(lastType == TokenType.RP ||
+		   lastType == TokenType.Var ||
+		   lastType == TokenType.Const ||
+		   (numOk && lastType == TokenType.Num))
+                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId);
 	}
 	
 	function lexNum(state) {
@@ -95,7 +109,7 @@ var lex = (function() {
 		if(!res) throw new Error('Expected a number');
 		
 		addImplicitMul(state, false);
-		pushToken(state, 'num', parseFloat(res[1]));
+		pushToken(state, TokenType.Num, parseFloat(res[1]));
 		state.s = res[2];
 	}
 	
@@ -135,9 +149,9 @@ var lex = (function() {
 		var tok,
 			env = state.env;
 		
-		if(env.isFnName(id)) tok = Token('fn', FnCall(state.env, id));
-		else if(env.isConst(id)) tok = Token('const', env.consts[id]);
-		else if(env.isVarName(id)) tok = Token('var', id);
+		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id));
+		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id]);
+		else if(env.isVarName(id)) tok = Token(TokenType.Var, id);
 		
 		return tok;
 	}
@@ -146,9 +160,9 @@ var lex = (function() {
 		if(state.s.charAt(0) != '-') throw new Error('Expected a minus');
 		
 		if(shouldNegate(state))
-			pushFnToken(state, 'negate', '_negate');
+			pushFnToken(state, TokenType.Negate, '_negate');
 		else
-			pushFnToken(state, 'addop', state.env._subtractOpId);
+			pushFnToken(state, TokenType.AddOp, state.env._subtractOpId);
 			
 		state.s = state.s.substring(1);
 	}
@@ -157,12 +171,12 @@ var lex = (function() {
 		if(state.tokens.length === 0) return true;
 		
 		var last = state.tokens[state.tokens.length - 1];
-		return last.type == 'lp' ||
-			   last.type == 'addop' ||
-			   last.type == 'mulop' ||
-			   last.type == 'comma' ||
-			   last.type == 'pow' ||
-			   last.type == 'negate';
+		return last.type == TokenType.LP ||
+			   last.type == TokenType.AddOp ||
+			   last.type == TokenType.MulOp ||
+			   last.type == TokenType.Comma ||
+			   last.type == TokenType.Pow ||
+			   last.type == TokenType.Negate;
 	}
 	
 	function lexOp(state) {
@@ -170,11 +184,11 @@ var lex = (function() {
 			env = state.env;
 		
 		if(env.isAddOp(c))
-			pushFnToken(state, 'addop', c);
+			pushFnToken(state, TokenType.AddOp, c);
 		else if(env.isMulOp(c))
-			pushFnToken(state, 'mulop', c);
+			pushFnToken(state, TokenType.MulOp, c);
 		else if(!env.noPowOp && c == env._powOpId)
-			pushFnToken(state, 'pow', '_pow');
+			pushFnToken(state, TokenType.Pow, '_pow');
 		else
 			throw new Error('Expected an operator');
 		

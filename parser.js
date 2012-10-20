@@ -6,14 +6,14 @@ var parse = (function() {
 		this.root = root;
 		this.children = children;
 	};
-		
+	
 	ParseTree.prototype.isLeaf = function() {
 		return !this.children || this.children.length === 0;
 	};
 	
 	ParseTree.prototype.isConstant = function() {
-		return this.root.type != 'var' &&
-		       !(this.root.type == 'fn' && this.root.val.envVal.nondeterministic) &&
+		return this.root.type != TokenType.Var &&
+		       !(this.root.type == TokenType.Fn && this.root.val.envVal.nondeterministic) &&
 		       (this.isLeaf() || areConstant(this.children));
 	};
 	
@@ -37,7 +37,7 @@ var parse = (function() {
 	function parseE(env, tokens) {
 		var eparse = parseTM(env, tokens);
 			
-		while(tokens.length > 0 && tokens[0].type == 'addop') {
+		while(tokens.length > 0 && tokens[0].type == TokenType.AddOp) {
 			var temppt = eparse;
 			eparse = ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
 		}
@@ -48,7 +48,7 @@ var parse = (function() {
 	function parseTM(env, tokens) {
 		var tmparse = parseF(env, tokens);
 		
-		while(tokens.length > 0 && tokens[0].type == 'mulop') {
+		while(tokens.length > 0 && tokens[0].type == TokenType.MulOp) {
 			var temppt = tmparse;
 			tmparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 		}
@@ -62,12 +62,12 @@ var parse = (function() {
 		if(tokens.length === 0)
 			throw new Error('Expected a factor');
 		
-		if(tokens[0].type == 'negate')
+		if(tokens[0].type == TokenType.Negate)
 			fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
 		else {
 			fparse = parseDAT(env, tokens);
 			
-			if(tokens.length > 0 && tokens[0].type == 'pow') {
+			if(tokens.length > 0 && tokens[0].type == TokenType.Pow) {
 				var temppt = fparse;
 				fparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
 			}
@@ -77,24 +77,24 @@ var parse = (function() {
 	}
 	
 	function parseFN(env, tokens) {
-		var head = eatMandToken(tokens, 'fn', 'function name'),
+		var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
 			fnparse = ParseTree(head, []);
 		
-		eatMandToken(tokens, 'lp', 'left parenthesis', 'Functions must be followed by an opening parenthesis');
+		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis');
 
-		if(tokens[0].type == 'rp')
+		if(tokens[0].type == TokenType.RP)
 			tokens.shift();
 		else {
 			fnparse.children.push(parseE(env, tokens));
 			head.val.argCount++;
 			
-			while(tokens[0].type != 'rp') {
-				eatMandToken(tokens, 'comma', 'comma', 'Too few arguments to a function?');
+			while(tokens[0].type != TokenType.RP) {
+				eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to a function?');
 				fnparse.children.push(parseE(env, tokens));
 				head.val.argCount++;
 			}
 			
-			eatMandToken(tokens, 'rp', 'right parenthesis', 'Too many arguments to a function?');
+			eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Too many arguments to a function?');
 		}
 		
 		if(!env.noArityCheck) {
@@ -114,18 +114,18 @@ var parse = (function() {
 			throw new Error('Expected a datum');
 		
 		switch(tokens[0].type) {
-			case 'var':
-			case 'num':
-			case 'const':
+			case TokenType.Var:
+			case TokenType.Num:
+			case TokenType.Const:
 				return ParseTree(tokens.shift());
 				
-			case 'fn':
+			case TokenType.Fn:
 				return parseFN(env, tokens);
 				
-			case 'lp':
+			case TokenType.LP:
 				tokens.shift();
 				var eparse = parseE(env, tokens);
-				eatMandToken(tokens, 'rp', 'right parenthesis', 'Mismatched parentheses');
+				eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Mismatched parentheses');
 				return eparse;
 				
 			default:
