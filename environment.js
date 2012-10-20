@@ -20,18 +20,18 @@ var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 };
 
 var Environment = (function() {
-	var Environment = function(vars, noImplicitMul, noPowOp, noArityCheck) {
+	var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
 		if(!(this instanceof Environment))
-			return new Environment(vars, noImplicitMul, noPowOp, noArityCheck);
+			return new Environment(vars, noAutoParens, noImplicitMul, noPowOp);
 	
 		this.fns = clone(defFns);
 		this.consts = clone(defConsts);
 		this.addOps = clone(defAddOps);
 		this.mulOps = clone(defMulOps);
 		
+		this.noAutoParens = !!noAutoParens;
 		this.noImplicitMul = !!noImplicitMul;
 		this.noPowOp = !!noPowOp;
-		this.noArityCheck = !!noArityCheck;
 	
 		if(vars)
 			this.vars = vars.slice();
@@ -226,7 +226,7 @@ var Environment = (function() {
 		if(env.isKnownId(id))
 			throw new Error('Operator ID ' + id + ' is already in use');
 		
-		if(!env.noArityCheck && fn.length != 2)
+		if(fn.length != 2)
 			throw new Error('Operators must take exactly 2 arguments');
 	}
 	

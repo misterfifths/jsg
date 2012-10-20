@@ -25,18 +25,18 @@ var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 };
 
 var Environment = (function() {
-	var Environment = function(vars, noImplicitMul, noPowOp, noArityCheck) {
+	var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
 		if(!(this instanceof Environment))
-			return new Environment(vars, noImplicitMul, noPowOp, noArityCheck);
+			return new Environment(vars, noAutoParens, noImplicitMul, noPowOp);
 	
 		this.fns = clone(defFns);
 		this.consts = clone(defConsts);
 		this.addOps = clone(defAddOps);
 		this.mulOps = clone(defMulOps);
 		
+		this.noAutoParens = !!noAutoParens;
 		this.noImplicitMul = !!noImplicitMul;
 		this.noPowOp = !!noPowOp;
-		this.noArityCheck = !!noArityCheck;
 	
 		if(vars)
 			this.vars = vars.slice();
@@ -231,7 +231,7 @@ var Environment = (function() {
 		if(env.isKnownId(id))
 			throw new Error('Operator ID ' + id + ' is already in use');
 		
-		if(!env.noArityCheck && fn.length != 2)
+		if(fn.length != 2)
 			throw new Error('Operators must take exactly 2 arguments');
 	}
 	
@@ -523,31 +523,43 @@ var parse = (function() {
 			fnparse = ParseTree(head, []);
 		
 		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis');
-
-		if(tokens[0].type == TokenType.RP)
-			tokens.shift();
-		else {
-			fnparse.children.push(parseE(env, tokens));
-			head.val.argCount++;
-			
-			while(tokens[0].type != TokenType.RP) {
-				eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to a function?');
-				fnparse.children.push(parseE(env, tokens));
-				head.val.argCount++;
-			}
-			
-			eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Too many arguments to a function?');
-		}
 		
-		if(!env.noArityCheck) {
-			if(head.val.envVal.lengthIsMinimum) {
-				if(head.val.argCount < head.val.envVal.length)
-					throw new Error('Invalid number of arguments to ' + head.val.name + ': expected at least ' + head.val.envVal.length + ' but got ' + head.val.argCount);
-			}
-			else if(head.val.argCount != head.val.envVal.length)
-				throw new Error('Invalid number of arguments to ' + head.val.name + ': expected ' + head.val.envVal.length + ' but got ' + head.val.argCount);
-		}
-		
+        var nargs = head.val.envVal.length,
+            argsAreMin = head.val.envVal.lengthIsMinimum,
+            pendingComma = false;
+        
+        while(tokens.length > 0 && tokens[0].type != TokenType.RP &&
+              (argsAreMin || head.val.argCount < nargs))
+        {
+            fnparse.children.push(parseE(env, tokens));
+            head.val.argCount++;
+            pendingComma = false;
+            
+            if(head.val.argCount < nargs) {
+                // We require more arguments. Eat a comma and go around again.
+                eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to ' + head.val.name + '? Expecting ' + (argsAreMin ? ' at least ' : '') + nargs + ' but got ' + head.val.argCount);
+                pendingComma = true;
+            }
+            else if(argsAreMin && tokens.length > 0 && tokens[0].type == TokenType.Comma) {
+                // We seem to have more arguments. Eat the comma and go around again.
+                tokens.shift();
+                pendingComma = true;
+            }
+        }
+        
+        // If everything ended but we just ate a comma, that's an error.
+        // For example: max(1, 2,
+        if(pendingComma)
+            throw new Error('Expected an expression after comma');
+        
+        if(argsAreMin && head.val.argCount < nargs)
+            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected at least ' + nargs + ' but got ' + head.val.argCount);
+        
+        if(!argsAreMin && head.val.argCount != nargs)
+            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected ' + nargs + ' but got ' + head.val.argCount);
+        
+        eatRPWithInsertion(tokens, 'Too many arguments to ' + head.val.name + '? Expected ' + nargs, env);
+        
 		return fnparse;
 	}
 	
@@ -567,7 +579,7 @@ var parse = (function() {
 			case TokenType.LP:
 				tokens.shift();
 				var eparse = parseE(env, tokens);
-				eatMandToken(tokens, TokenType.RP, 'right parenthesis', 'Mismatched parentheses');
+				eatRPWithInsertion(tokens, 'Mismatched parentheses', env);
 				return eparse;
 				
 			default:
@@ -583,6 +595,15 @@ var parse = (function() {
 		}
 		
 		return tokens.shift();
+	}
+	
+	function eatRPWithInsertion(tokens, hint, env) {
+	    // Emulate the TI-calculator's behavior of adding in missing close
+	    // parentheses if we've hit the end of the input.
+	    if(!env.noAutoParens && tokens.length === 0)
+            return Token(TokenType.RP);
+        
+        return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
 	}
 })();
 

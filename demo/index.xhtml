@@ -2,43 +2,50 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" />
+<script type="text/javascript" src="jquery.min.js" />
 
-<script type="text/javascript" src="build/jsg.min.js" />
+<script type="text/javascript" src="../build/jsg.js" />
 <script type="text/javascript">
 <![CDATA[
 
 function timeit() {
-    function log2(x, y) { return Math.log(x) / Math.LN2; }
-    var f1 = function(x, y) { return Math.pow(log2(x, y), 2) / (x * y); };
-    var f2 = JSG.Expr.compile('x', 'y', 'log2(x)^2/(xy)');
-    console.log(f2.toString());
+    function test1(N) {
+        function log2(x, y) { return Math.log(x) / Math.LN2; }
+        function f1(x, y) { return Math.pow(log2(x, y), 2) / (x * y); };
+        
+        console.log(f1(2, 3));
     
-    var N = 10000000;
-    
-    function test1() {
+        var s = new Date().getTime(), e;
+        
         for(var i = 0; i < N; i++)
             f1(2, 3);
+            
+        e = new Date().getTime();
+        
+        $('#res').text(e - s);
     }
     
-    function test2() {
+    function test2(N) {
+        var f2 = JSG.Expr.compile('x', 'y', 'log2(x)^2/(xy)');
+        console.log(f2.toString());
+        
+        console.log(f2(2, 3));
+        
+        var s = new Date().getTime(), e;
+        
         for(var i = 0; i < N; i++)
             f2(2, 3);
+            
+        e = new Date().getTime();
+        
+        $('#fn').text(e - s);
     };
     
-    console.log(f1(2, 3) + ' == ' + f2(2, 3));
-        
-    var s, e;
+    //console.log(f1(2, 3) + ' == ' + f2(2, 3));
     
-    s = new Date().getTime();
-    test1();
-    e = new Date().getTime();
-    console.log(e - s);
-    
-    s = new Date().getTime();
-    test2();
-    e = new Date().getTime();
-    console.log(e - s);
+    var N = 10000000;
+    test1(N);
+    test2(N);
 }
 
 function init() {
@@ -48,9 +55,9 @@ function init() {
 		var vars = $('#vars').val().split(','),
 			vals = $('#vals').val().split(','),
 			env = JSG.Expr.Environment(vars,
+			        !$('#autoParens').prop('checked'),
 			        !$('#implicitMul').prop('checked'),
-					!$('#powOp').prop('checked'),
-					!$('#arityCheck').prop('checked')),
+					!$('#powOp').prop('checked')),
 			f,
 			res;
 		
@@ -79,6 +86,10 @@ function init() {
 			$('#res').text('Error: ' + exc.message);
 		}
 	});
+	
+	$('#time').click(function(e) {
+	    timeit();
+	});
 }
 
 $(init);
@@ -93,15 +104,18 @@ $(init);
 <label for="vals">Values </label><input id="vals" value="2, 4" /><br />
 <fieldset>
 	<legend>Options</legend>
+	<input type="checkbox" id="autoParens" checked="checked" />
+	<label for="autoParens">Automatic parenthesis closure</label><br />
 	<input type="checkbox" id="implicitMul" checked="checked" />
 	<label for="implicitMul">Implicit multiplication</label><br/>
 	<input type="checkbox" id="powOp" checked="checked" />
 	<label for="powOp">Exponentiation operator (^)</label><br/>
-	<input type="checkbox" id="arityCheck" checked="checked" />
-	<label for="arityCheck">Parse-time arity checks</label>
 </fieldset>
-<input type="submit" value="Evaluate" id="go" />
+<br />
+<input type="submit" value="Evaluate" id="go" /><br /><br />
+<input type="button" value="Time test" id="time" />
 </form>
+<br />
 <div id="res" />
 <div id="fn" />
 </body>
