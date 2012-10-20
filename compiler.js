@@ -131,15 +131,15 @@ var compile = (function() {
 		
 		if(rootIsOp) {
 			if(pt.children.length == 1)
-				s += t + ptToStr(env, pt.children[0], envAccumulator);
+				s += t + ptToStr(env, pt.children[0], envAccumulator, optimize);
 			else if(pt.children.length == 2)
-				s += ptToStr(env, pt.children[0], envAccumulator) + ' ' + t + ' ' + ptToStr(env, pt.children[1], envAccumulator);
+				s += ptToStr(env, pt.children[0], envAccumulator, optimize) + ' ' + t + ' ' + ptToStr(env, pt.children[1], envAccumulator, optimize);
 			else
 				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments');
 		}
 		else if(pt.children) {
 			for(var i = 0; i < pt.children.length; i++) {
-				s += ptToStr(env, pt.children[i], envAccumulator);
+				s += ptToStr(env, pt.children[i], envAccumulator, optimize);
 				
 				if(rootIsFn && i != pt.children.length - 1)
 					s += ', ';
