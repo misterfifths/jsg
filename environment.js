@@ -32,11 +32,6 @@ var Environment = (function() {
 		this.noAutoParens = !!noAutoParens;
 		this.noImplicitMul = !!noImplicitMul;
 		this.noPowOp = !!noPowOp;
-	
-		if(vars)
-			this.vars = vars.slice();
-		else
-			this.vars = [];
 		
 		// important things for the parser & lexer
 		this._implicitMulOpId = '*';
@@ -44,6 +39,10 @@ var Environment = (function() {
 		this._negate = NativeOp('-', 1);
 		this._pow = NativeFn('Math.pow', 2);
 		this._powOpId = '^';
+		
+		this.vars = [];
+        if(vars)
+			this.setVars(vars);
 	};
 
 	var defFns,
@@ -127,7 +126,7 @@ var Environment = (function() {
 	
 	eproto.setVars = function(names) {
 	    for(var i = 0; i < names.length; i++)
-	        dieIfBadId(this, name);
+	        dieIfBadId(this, names[i]);
         
         this.vars = names.slice();
 	};
