@@ -84,9 +84,10 @@ test('paren completion', function() {
     exprEquals('mod(6, 4', 2, 'function parens are completed');
     exprEquals('(2(4*2', 16, 'grouping parens are completed');
     exprThrows('rand(1', 'parens are not completed for an invalid number of arguments');
+    exprThrows('sin(2,', 'commas are not consumed at the end of an argument list');
     
     var env = JSG.Expr.Environment([], true);
-    eexprThrows('mod(6, 4', 'paren completion disabled by Environment setting');
+    eexprThrows(env, 'mod(6, 4', 'paren completion disabled by Environment setting');
 });
 
 test('nondeterministic functions', function() {
