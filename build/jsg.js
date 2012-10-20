@@ -134,7 +134,7 @@ var Environment = (function() {
 	    for(var i = 0; i < names.length; i++)
 	        dieIfBadId(this, name);
         
-        this.vars = names.slice(0);
+        this.vars = names.slice();
 	};
 	
 	eproto.addFn = function(name, fn) {
@@ -623,7 +623,7 @@ var compile = (function() {
 		// we are less likely to get issues if, say, the user names a variable
 		// something like "env".
 		
-	    var args = env.vars.join(','),
+	    var args = mangledVarNamesAsArgString(env),
 	        envAccumulator = {},
 	        body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, !skipOptimizations) + '; })',
 	        envAccumulatorHasProps = false;
@@ -642,9 +642,24 @@ var compile = (function() {
     }
     
     return internalCompile;
+    
+    function mangledVarNamesAsArgString(env) {
+        var s = '';
+        for(var i = 0; i < env.vars.length; i++) {
+            s += mangleVarNameForEval(env.vars[i]);
+            if(i != env.vars.length - 1)
+                s += ', ';
+        }
+        
+        return s;
+    }
 	
-	function mangleNameForEval(name) {
+	function mangleEnvNameForEval(name) {
 	    return '__env_' + name + '__';
+	}
+	
+	function mangleVarNameForEval(name) {
+	    return '__var_' + name + '__';
 	}
 	
 	function tokToStr(env, tok, envAccumulator) {
@@ -663,11 +678,11 @@ var compile = (function() {
 				return tok.val.toString();
 			
 			case TokenType.Var:
-				return tok.val;
-				
+				return mangleVarNameForEval(tok.val);
+			
 			case TokenType.Negate:
 			case TokenType.Pow:
-			    mangledName = mangleNameForEval(tok.val.name);
+			    mangledName = mangleEnvNameForEval(tok.val.name);
 			    if(envAccumulator)
                     envAccumulator[mangledName] = 'env["' + tok.val.name + '"]';
 
@@ -678,7 +693,7 @@ var compile = (function() {
 			case TokenType.Fn: s = 'fns'; break;
 		}
 		
-		mangledName = mangleNameForEval(tok.val.name);
+		mangledName = mangleEnvNameForEval(tok.val.name);
 		
 		if(envAccumulator)
             envAccumulator[mangledName] = 'env.' + s + '["' + tok.val.name + '"]';

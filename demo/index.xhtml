@@ -74,6 +74,8 @@ function init() {
 		};
 		sumFn.lengthIsMinimum = true;
 		env.addFn('sum', sumFn);
+		
+		env.addFn('meta', JSG.Expr.compile('x', 'y', 'abs(x^2 - y^2)'));
 			
 		try {
 			var f = JSG.Expr.compile(env, $('#expr').val()),
