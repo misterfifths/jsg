@@ -129,7 +129,7 @@ var Environment = (function() {
 	    for(var i = 0; i < names.length; i++)
 	        dieIfBadId(this, name);
         
-        this.vars = names.slice(0);
+        this.vars = names.slice();
 	};
 	
 	eproto.addFn = function(name, fn) {
