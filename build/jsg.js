@@ -306,7 +306,7 @@ var lex = (function() {
 	};
 	
 	LexState.prototype.rangeFromCurrentS = function(length) {
-	    var startIdx = this._origLength - this.s.length,
+	    var startIdx = this.currentPositionInInput(),
 	        endIdx = startIdx + length - 1,
 	        start = this._whitespaceMap[startIdx],
 	        end = length === 0 ? start : this._whitespaceMap[endIdx] + 1;
@@ -315,10 +315,10 @@ var lex = (function() {
 	};
 	
 	LexState.prototype.parseErrorAtCurrentS = function(message, length) {
-	    var start = this.currentPositionInInput();
 	    if(length === undefined) length = 1;
+	    var range = this.rangeFromCurrentS(length);
 	    
-	    return parseError(message, start, start + length);
+	    return parseError(message, range.start, range.end);
 	};
 	
 	function removeWhitespaceWithMap(s) {
