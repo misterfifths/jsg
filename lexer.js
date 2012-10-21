@@ -1,9 +1,18 @@
-var Token = function(type, val) {
+var parseError = function(message, start, end) {
+    var e = new Error(message);
+    e.name = 'ParseError';
+    
+    e.range = { start: start, end: end };
+    return e;
+};
+
+var Token = function(type, val, rangeInInput) {
 	if(!(this instanceof Token))
-		return new Token(type, val);
+		return new Token(type, val, rangeInInput);
 
 	this.type = type;
 	this.val = val;
+	this.rangeInInput = rangeInInput;
 };
 
 var TokenType = {
@@ -33,16 +42,67 @@ var lex = (function() {
 	var idRegex = /^([A-Za-z_][A-Za-z_0-9]*)(.*)/,
 		numRegex = /^([0-9]*\.?[0-9]+)(.*)/,
 		simpleNumRegex = /^[0-9.]/;
+	
+	var LexState = function(env, s) {
+	    if(!(this instanceof LexState))
+	        return new LexState(env, s);
+	    
+	    var unwhitespaced = removeWhitespaceWithMap(s);
+	    
+	    this.env = env;
+	    this.s = unwhitespaced.s;
+	    this._origLength = unwhitespaced.s.length;
+	    this._whitespaceMap = unwhitespaced.map;
+	    this.tokens = [];
+	};
+	
+	LexState.prototype.consumeOneChar = function() {
+	    this.s = this.s.substring(1);
+	};
+	
+	LexState.prototype.currentPositionInInput = function() {
+	    return this._origLength - this.s.length;
+	};
+	
+	LexState.prototype.rangeFromCurrentS = function(length) {
+	    var startIdx = this._origLength - this.s.length,
+	        endIdx = startIdx + length - 1,
+	        start = this._whitespaceMap[startIdx],
+	        end = length === 0 ? start : this._whitespaceMap[endIdx] + 1;
+	    
+	    return { start: start, end: end };
+	};
+	
+	LexState.prototype.parseErrorAtCurrentS = function(message, length) {
+	    var start = this.currentPositionInInput();
+	    if(length === undefined) length = 1;
+	    
+	    return parseError(message, start, start + length);
+	};
+	
+	function removeWhitespaceWithMap(s) {
+        var idxMap = [],
+            whitespaceRegex = /\s/,
+            res = '';
+        
+        for(var i = 0; i < s.length; i++) {
+            var char = s.charAt(i);
+            if(!whitespaceRegex.test(char)) {
+                idxMap.push(i);
+                res += char;
+            }
+        }
+        
+        return { s: res, map: idxMap };
+    }
 
 	return function(env, expr) {
-		var s = expr.replace(/\s/g, ''),
-			tokens = [],
-			state = { env: env, s: s, tokens: tokens };
+		var state = LexState(env, expr);
 		
 		while(state.s.length > 0)
 			realLex(state);
 	
-		return tokens;
+		return state.tokens;
 	};
 	
 	function realLex(state) {
@@ -52,17 +112,17 @@ var lex = (function() {
 			case '(':
 				addImplicitMul(state);
 				pushToken(state, TokenType.LP);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 			
 			case ')':
 				pushToken(state, TokenType.RP);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 				
 			case ',':
 				pushToken(state, TokenType.Comma);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 			
 			case '-':
@@ -79,17 +139,22 @@ var lex = (function() {
 				lexOp(state);
 			}
 			catch(e) {
-				throw new Error('Invalid input: ' + state.s);
+			    throw state.parseErrorAtCurrentS('Invalid character "' + state.s.charAt(0) + '".');
 			}
 		}
 	}
 	
-	function pushToken(state, type, val) {
-		state.tokens.push(Token(type, val));
+	function pushToken(state, type, val, length) {
+	    if(!val)
+	        length = 1;
+	    
+		state.tokens.push(Token(type, val, state.rangeFromCurrentS(length)));
 	}
 	
-	function pushFnToken(state, type, id) {
-		pushToken(state, type, FnCall(state.env, id));
+	function pushFnToken(state, type, id, lengthOverride) {
+	    var length = lengthOverride !== undefined ? lengthOverride : id.length;
+	    
+		pushToken(state, type, FnCall(state.env, id), length);
 	}
 	
 	function addImplicitMul(state, numOk) {
@@ -101,21 +166,23 @@ var lex = (function() {
 		   lastType == TokenType.Var ||
 		   lastType == TokenType.Const ||
 		   (numOk && lastType == TokenType.Num))
-                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId);
+                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId, 0);
 	}
 	
 	function lexNum(state) {
 		var res = numRegex.exec(state.s);
-		if(!res) throw new Error('Expected a number');
+		if(!res)
+		    throw state.parseErrorAtCurrentS('Expected a number.');
 		
 		addImplicitMul(state, false);
-		pushToken(state, TokenType.Num, parseFloat(res[1]));
+		pushToken(state, TokenType.Num, parseFloat(res[1]), res[1].length);
 		state.s = res[2];
 	}
 	
 	function lexId(state) {
 		var res = idRegex.exec(state.s);
-		if(!res) throw new Error('Expected an identifier');
+		if(!res)
+		    throw state.parseErrorAtCurrentS('Expected a identifier.');
 		
 		var id = res[1],
 			newS = res[2],
@@ -142,29 +209,30 @@ var lex = (function() {
 			}
 		}
 		
-		throw new Error('Unknown identifier ' + id);
+		throw state.parseErrorAtCurrentS('Unknown identifier "' + id + '".', id.length);
 	}
 	
 	function idToToken(state, id) {
 		var tok,
 			env = state.env;
 		
-		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id));
-		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id]);
-		else if(env.isVarName(id)) tok = Token(TokenType.Var, id);
+		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id), state.rangeFromCurrentS(id.length));
+		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
+		else if(env.isVarName(id)) tok = Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
 		
 		return tok;
 	}
 	
 	function lexMinus(state) {
-		if(state.s.charAt(0) != '-') throw new Error('Expected a minus');
+		if(state.s.charAt(0) != '-')
+		    throw state.parseErrorAtCurrentS('Expected a minus sign.');
 		
 		if(shouldNegate(state))
-			pushFnToken(state, TokenType.Negate, '_negate');
+			pushFnToken(state, TokenType.Negate, '_negate', 1);
 		else
 			pushFnToken(state, TokenType.AddOp, state.env._subtractOpId);
 			
-		state.s = state.s.substring(1);
+		state.consumeOneChar();
 	}
 	
 	function shouldNegate(state) {
@@ -188,10 +256,10 @@ var lex = (function() {
 		else if(env.isMulOp(c))
 			pushFnToken(state, TokenType.MulOp, c);
 		else if(!env.noPowOp && c == env._powOpId)
-			pushFnToken(state, TokenType.Pow, '_pow');
+			pushFnToken(state, TokenType.Pow, '_pow', 1);
 		else
-			throw new Error('Expected an operator');
+			throw state.parseErrorAtCurrentS('Expected an operator.');
 		
-		state.s = state.s.substring(1);
+		state.consumeOneChar();
 	}
 })();

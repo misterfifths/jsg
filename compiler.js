@@ -134,8 +134,11 @@ var compile = (function() {
 				s += t + ptToStr(env, pt.children[0], envAccumulator, optimize);
 			else if(pt.children.length == 2)
 				s += ptToStr(env, pt.children[0], envAccumulator, optimize) + ' ' + t + ' ' + ptToStr(env, pt.children[1], envAccumulator, optimize);
-			else
-				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments');
+			else {
+			    // There's really no way this should ever happen unless we were
+			    // handed a manually-constructed broken parse tree.
+				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments.');
+			}
 		}
 		else if(pt.children) {
 			for(var i = 0; i < pt.children.length; i++) {

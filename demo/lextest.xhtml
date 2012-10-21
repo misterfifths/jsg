@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<script type="text/javascript" src="jquery.min.js" />
+
+<script type="text/javascript" src="../build/jsg.js" />
+<script type="text/javascript">
+<![CDATA[
+
+function getInputDescOfRange(expr, range) {
+    if(range.start === undefined)
+        return '<at end of input>';
+    
+    var start = range.start, end = range.end;
+    if(end === undefined)
+        end = expr.length;
+    
+    if(start == end)
+        return '<implicit token before index ' + start + '>';
+    
+    return start + ' -> ' + end + ': "' + expr.substring(start, end) + '"';
+}
+
+function init() {
+	$('#frm').submit(function(e) {
+		e.preventDefault();
+	
+		var vars = $('#vars').val().split(','),
+			vals = $('#vals').val().split(','),
+			env = JSG.Expr.Environment(vars,
+			        !$('#autoParens').prop('checked'),
+			        !$('#implicitMul').prop('checked'),
+					!$('#powOp').prop('checked')),
+			f,
+			res;
+		
+		for(var i = 0; i < vals.length; i++)
+		    vals[i] = parseFloat(vals[i]);
+		
+		// Add a sample n-arity function for kicks
+		var sumFn = function(a, b) {
+			var sum = a + b;
+			for(var i = 2; i < arguments.length; i++)
+				sum += arguments[i];
+			
+			return sum;
+		};
+		sumFn.lengthIsMinimum = true;
+		env.addFn('sum', sumFn);
+		
+		var tokens;
+		
+		try {
+			var expr = $('#expr').val(),
+			    s = '';
+			
+			tokens = JSG.Expr.Core.lex(env, expr);
+			
+			for(var i = 0; i < tokens.length; i++) {
+			    var t = tokens[i];
+			    s += t.type;
+			    if(t.val)
+			        s += '(' + t.val + ')';
+			    
+			    s += '\t\t';
+			    s += getInputDescOfRange(expr, t.rangeInInput);
+			    
+			    s += '\n';
+			}
+			
+			$('#tres').text(s);
+		}
+		catch(exc) {
+		    var s = 'Error: ' + exc.message;
+		    if('range' in exc) {
+		        s += '\n[' + exc.range.start + ', ' + exc.range.end + ']';
+			    if(exc.range.end > exc.range.start || exc.range.end === undefined)
+			        s += ': "' + expr.substring(exc.range.start, exc.range.end) + '"'
+		    }
+			$('#tres').text(s);
+		}
+		
+		if(tokens) {
+		    try {
+		        JSG.Expr.Core.parse(env, tokens);
+		        $('#pres').text('success');
+		    }
+		    catch(exc) {
+		        var s = 'Error: ' + exc.message;
+                if('range' in exc) {
+                    s += '\n' + getInputDescOfRange(expr, exc.range);
+                }
+                $('#pres').text(s);
+		    }
+		}
+	});
+}
+
+$(init);
+
+]]>
+</script>
+</head>
+<body>
+<form id='frm'>
+<label for="vars">Variables </label><input id="vars" value="x,y" /><br />
+<label for="expr">Expression </label><input id="expr" value="2xy" /><br />
+<label for="vals">Values </label><input id="vals" value="2, 4" /><br />
+<fieldset>
+	<legend>Options</legend>
+	<input type="checkbox" id="autoParens" checked="checked" />
+	<label for="autoParens">Automatic parenthesis closure</label><br />
+	<input type="checkbox" id="implicitMul" checked="checked" />
+	<label for="implicitMul">Implicit multiplication</label><br/>
+	<input type="checkbox" id="powOp" checked="checked" />
+	<label for="powOp">Exponentiation operator (^)</label><br/>
+</fieldset>
+<br />
+<input type="submit" value="Evaluate" id="go" /><br />
+</form>
+<br />
+Tokenizing:
+<pre id="tres" /><br />
+<br />
+Parsing:
+<pre id="pres" />
+</body>
+</html>

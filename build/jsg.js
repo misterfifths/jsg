@@ -239,12 +239,21 @@ var Environment = (function() {
 
 /** lexer.js **/
 
-var Token = function(type, val) {
+var parseError = function(message, start, end) {
+    var e = new Error(message);
+    e.name = 'ParseError';
+    
+    e.range = { start: start, end: end };
+    return e;
+};
+
+var Token = function(type, val, rangeInInput) {
 	if(!(this instanceof Token))
-		return new Token(type, val);
+		return new Token(type, val, rangeInInput);
 
 	this.type = type;
 	this.val = val;
+	this.rangeInInput = rangeInInput;
 };
 
 var TokenType = {
@@ -274,16 +283,67 @@ var lex = (function() {
 	var idRegex = /^([A-Za-z_][A-Za-z_0-9]*)(.*)/,
 		numRegex = /^([0-9]*\.?[0-9]+)(.*)/,
 		simpleNumRegex = /^[0-9.]/;
+	
+	var LexState = function(env, s) {
+	    if(!(this instanceof LexState))
+	        return new LexState(env, s);
+	    
+	    var unwhitespaced = removeWhitespaceWithMap(s);
+	    
+	    this.env = env;
+	    this.s = unwhitespaced.s;
+	    this._origLength = unwhitespaced.s.length;
+	    this._whitespaceMap = unwhitespaced.map;
+	    this.tokens = [];
+	};
+	
+	LexState.prototype.consumeOneChar = function() {
+	    this.s = this.s.substring(1);
+	};
+	
+	LexState.prototype.currentPositionInInput = function() {
+	    return this._origLength - this.s.length;
+	};
+	
+	LexState.prototype.rangeFromCurrentS = function(length) {
+	    var startIdx = this._origLength - this.s.length,
+	        endIdx = startIdx + length - 1,
+	        start = this._whitespaceMap[startIdx],
+	        end = length === 0 ? start : this._whitespaceMap[endIdx] + 1;
+	    
+	    return { start: start, end: end };
+	};
+	
+	LexState.prototype.parseErrorAtCurrentS = function(message, length) {
+	    var start = this.currentPositionInInput();
+	    if(length === undefined) length = 1;
+	    
+	    return parseError(message, start, start + length);
+	};
+	
+	function removeWhitespaceWithMap(s) {
+        var idxMap = [],
+            whitespaceRegex = /\s/,
+            res = '';
+        
+        for(var i = 0; i < s.length; i++) {
+            var char = s.charAt(i);
+            if(!whitespaceRegex.test(char)) {
+                idxMap.push(i);
+                res += char;
+            }
+        }
+        
+        return { s: res, map: idxMap };
+    }
 
 	return function(env, expr) {
-		var s = expr.replace(/\s/g, ''),
-			tokens = [],
-			state = { env: env, s: s, tokens: tokens };
+		var state = LexState(env, expr);
 		
 		while(state.s.length > 0)
 			realLex(state);
 	
-		return tokens;
+		return state.tokens;
 	};
 	
 	function realLex(state) {
@@ -293,17 +353,17 @@ var lex = (function() {
 			case '(':
 				addImplicitMul(state);
 				pushToken(state, TokenType.LP);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 			
 			case ')':
 				pushToken(state, TokenType.RP);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 				
 			case ',':
 				pushToken(state, TokenType.Comma);
-				state.s = state.s.substring(1);
+				state.consumeOneChar();
 				return;
 			
 			case '-':
@@ -320,17 +380,22 @@ var lex = (function() {
 				lexOp(state);
 			}
 			catch(e) {
-				throw new Error('Invalid input: ' + state.s);
+			    throw state.parseErrorAtCurrentS('Invalid character "' + state.s.charAt(0) + '".');
 			}
 		}
 	}
 	
-	function pushToken(state, type, val) {
-		state.tokens.push(Token(type, val));
+	function pushToken(state, type, val, length) {
+	    if(!val)
+	        length = 1;
+	    
+		state.tokens.push(Token(type, val, state.rangeFromCurrentS(length)));
 	}
 	
-	function pushFnToken(state, type, id) {
-		pushToken(state, type, FnCall(state.env, id));
+	function pushFnToken(state, type, id, lengthOverride) {
+	    var length = lengthOverride !== undefined ? lengthOverride : id.length;
+	    
+		pushToken(state, type, FnCall(state.env, id), length);
 	}
 	
 	function addImplicitMul(state, numOk) {
@@ -342,21 +407,23 @@ var lex = (function() {
 		   lastType == TokenType.Var ||
 		   lastType == TokenType.Const ||
 		   (numOk && lastType == TokenType.Num))
-                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId);
+                pushFnToken(state, TokenType.MulOp, state.env._implicitMulOpId, 0);
 	}
 	
 	function lexNum(state) {
 		var res = numRegex.exec(state.s);
-		if(!res) throw new Error('Expected a number');
+		if(!res)
+		    throw state.parseErrorAtCurrentS('Expected a number.');
 		
 		addImplicitMul(state, false);
-		pushToken(state, TokenType.Num, parseFloat(res[1]));
+		pushToken(state, TokenType.Num, parseFloat(res[1]), res[1].length);
 		state.s = res[2];
 	}
 	
 	function lexId(state) {
 		var res = idRegex.exec(state.s);
-		if(!res) throw new Error('Expected an identifier');
+		if(!res)
+		    throw state.parseErrorAtCurrentS('Expected a identifier.');
 		
 		var id = res[1],
 			newS = res[2],
@@ -383,29 +450,30 @@ var lex = (function() {
 			}
 		}
 		
-		throw new Error('Unknown identifier ' + id);
+		throw state.parseErrorAtCurrentS('Unknown identifier "' + id + '".', id.length);
 	}
 	
 	function idToToken(state, id) {
 		var tok,
 			env = state.env;
 		
-		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id));
-		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id]);
-		else if(env.isVarName(id)) tok = Token(TokenType.Var, id);
+		if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id), state.rangeFromCurrentS(id.length));
+		else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
+		else if(env.isVarName(id)) tok = Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
 		
 		return tok;
 	}
 	
 	function lexMinus(state) {
-		if(state.s.charAt(0) != '-') throw new Error('Expected a minus');
+		if(state.s.charAt(0) != '-')
+		    throw state.parseErrorAtCurrentS('Expected a minus sign.');
 		
 		if(shouldNegate(state))
-			pushFnToken(state, TokenType.Negate, '_negate');
+			pushFnToken(state, TokenType.Negate, '_negate', 1);
 		else
 			pushFnToken(state, TokenType.AddOp, state.env._subtractOpId);
 			
-		state.s = state.s.substring(1);
+		state.consumeOneChar();
 	}
 	
 	function shouldNegate(state) {
@@ -429,11 +497,11 @@ var lex = (function() {
 		else if(env.isMulOp(c))
 			pushFnToken(state, TokenType.MulOp, c);
 		else if(!env.noPowOp && c == env._powOpId)
-			pushFnToken(state, TokenType.Pow, '_pow');
+			pushFnToken(state, TokenType.Pow, '_pow', 1);
 		else
-			throw new Error('Expected an operator');
+			throw state.parseErrorAtCurrentS('Expected an operator.');
 		
-		state.s = state.s.substring(1);
+		state.consumeOneChar();
 	}
 })();
 
@@ -470,10 +538,18 @@ var parse = (function() {
 			pt = parseE(env, toks);
 		
 		if(toks.length > 0)
-			throw new Error('Unexpected token(s) after end of expression');
+			throw parseError('Unexpected token(s) after end of expression.', toks[0].rangeInInput.start);
 		
 		return pt;
 	};
+	
+	function parseErrorAtToken(token, message) {
+	    return parseError(message, token.rangeInInput.start, token.rangeInInput.end);
+	}
+	
+	function parseErrorAtEnd(message) {
+	    return parseError('Unexpected end of expression: ' + message);
+	}
 	
 	function parseE(env, tokens) {
 		var eparse = parseTM(env, tokens);
@@ -501,7 +577,7 @@ var parse = (function() {
 		var fparse;
 		
 		if(tokens.length === 0)
-			throw new Error('Expected a factor');
+			throw parseErrorAtEnd('Expected a factor.');
 		
 		if(tokens[0].type == TokenType.Negate)
 			fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
@@ -521,7 +597,7 @@ var parse = (function() {
 		var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
 			fnparse = ParseTree(head, []);
 		
-		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis');
+		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis.');
 		
         var nargs = head.val.envVal.length,
             argsAreMin = head.val.envVal.lengthIsMinimum,
@@ -536,7 +612,7 @@ var parse = (function() {
             
             if(head.val.argCount < nargs) {
                 // We require more arguments. Eat a comma and go around again.
-                eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to ' + head.val.name + '? Expecting ' + (argsAreMin ? ' at least ' : '') + nargs + ' but got ' + head.val.argCount);
+                eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to "' + head.val.name + '"? Expected ' + (argsAreMin ? 'at least ' : '') + nargs + ' but got ' + head.val.argCount + '.');
                 pendingComma = true;
             }
             else if(argsAreMin && tokens.length > 0 && tokens[0].type == TokenType.Comma) {
@@ -546,25 +622,30 @@ var parse = (function() {
             }
         }
         
+        // We may have broken out with a right paren (or end of input) and too few arguments.
+        if((argsAreMin && head.val.argCount < nargs) || (!argsAreMin && head.val.argCount != nargs)) {
+            var argCountDesc = (argsAreMin ? 'at least ' : '') + nargs,
+                message = 'Too few arguments to "' + head.val.name + '"? Expected ' + argCountDesc + ' but got ' + head.val.argCount;
+            
+            if(tokens.length === 0)
+                throw parseErrorAtEnd(message);
+            
+            throw parseErrorAtToken(tokens[0], message);
+        }
+        
         // If everything ended but we just ate a comma, that's an error.
         // For example: max(1, 2,
         if(pendingComma)
-            throw new Error('Expected an expression after comma');
+            throw parseErrorAtEnd('Expected an expression after comma.');
         
-        if(argsAreMin && head.val.argCount < nargs)
-            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected at least ' + nargs + ' but got ' + head.val.argCount);
-        
-        if(!argsAreMin && head.val.argCount != nargs)
-            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected ' + nargs + ' but got ' + head.val.argCount);
-        
-        eatRPWithInsertion(tokens, 'Too many arguments to ' + head.val.name + '? Expected ' + nargs, env);
+        eatRPWithInsertion(tokens, 'Too many arguments to "' + head.val.name + '"? Expected ' + nargs + '.', env);
         
 		return fnparse;
 	}
 	
 	function parseDAT(env, tokens) {
 		if(tokens.length === 0)
-			throw new Error('Expected a datum');
+			throw parseErrorAtEnd('Expected a datum.');
 		
 		switch(tokens[0].type) {
 			case TokenType.Var:
@@ -578,20 +659,24 @@ var parse = (function() {
 			case TokenType.LP:
 				tokens.shift();
 				var eparse = parseE(env, tokens);
-				eatRPWithInsertion(tokens, 'Mismatched parentheses', env);
+				eatRPWithInsertion(tokens, 'Mismatched parentheses.', env);
 				return eparse;
 				
 			default:
-				throw new Error('Expected a datum');
+				throw parseErrorAtToken(tokens[0], 'Expected a datum.');
 		}
 	}
 	
 	function eatMandToken(tokens, type, friendly, hint) {
 		if(tokens.length === 0 || tokens[0].type != type) {
-			var errStr = 'Expected ' + (friendly || type);
-			if(hint) errStr += ' - ' + hint;
-			throw new Error(errStr);
-		}
+		    var errStr = 'Expected ' + (friendly || type) + '.';
+		    if(hint) errStr += ' ' + hint;
+		    
+		    if(tokens.length === 0)
+		        throw parseErrorAtEnd(errStr);
+		    
+            throw parseErrorAtToken(tokens[0], errStr);
+        }
 		
 		return tokens.shift();
 	}
@@ -600,7 +685,7 @@ var parse = (function() {
 	    // Emulate the TI-calculator's behavior of adding in missing close
 	    // parentheses if we've hit the end of the input.
 	    if(!env.noAutoParens && tokens.length === 0)
-            return Token(TokenType.RP);
+            return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
 	}
@@ -744,8 +829,11 @@ var compile = (function() {
 				s += t + ptToStr(env, pt.children[0], envAccumulator, optimize);
 			else if(pt.children.length == 2)
 				s += ptToStr(env, pt.children[0], envAccumulator, optimize) + ' ' + t + ' ' + ptToStr(env, pt.children[1], envAccumulator, optimize);
-			else
-				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments');
+			else {
+			    // There's really no way this should ever happen unless we were
+			    // handed a manually-constructed broken parse tree.
+				throw new Error('Invalid parse tree; a native operator was specified with ' + pt.children.length + ' arguments.');
+			}
 		}
 		else if(pt.children) {
 			for(var i = 0; i < pt.children.length; i++) {

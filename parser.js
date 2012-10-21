@@ -29,10 +29,18 @@ var parse = (function() {
 			pt = parseE(env, toks);
 		
 		if(toks.length > 0)
-			throw new Error('Unexpected token(s) after end of expression');
+			throw parseError('Unexpected token(s) after end of expression.', toks[0].rangeInInput.start);
 		
 		return pt;
 	};
+	
+	function parseErrorAtToken(token, message) {
+	    return parseError(message, token.rangeInInput.start, token.rangeInInput.end);
+	}
+	
+	function parseErrorAtEnd(message) {
+	    return parseError('Unexpected end of expression: ' + message);
+	}
 	
 	function parseE(env, tokens) {
 		var eparse = parseTM(env, tokens);
@@ -60,7 +68,7 @@ var parse = (function() {
 		var fparse;
 		
 		if(tokens.length === 0)
-			throw new Error('Expected a factor');
+			throw parseErrorAtEnd('Expected a factor.');
 		
 		if(tokens[0].type == TokenType.Negate)
 			fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
@@ -80,7 +88,7 @@ var parse = (function() {
 		var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
 			fnparse = ParseTree(head, []);
 		
-		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis');
+		eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis.');
 		
         var nargs = head.val.envVal.length,
             argsAreMin = head.val.envVal.lengthIsMinimum,
@@ -95,7 +103,7 @@ var parse = (function() {
             
             if(head.val.argCount < nargs) {
                 // We require more arguments. Eat a comma and go around again.
-                eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to ' + head.val.name + '? Expecting ' + (argsAreMin ? ' at least ' : '') + nargs + ' but got ' + head.val.argCount);
+                eatMandToken(tokens, TokenType.Comma, 'comma', 'Too few arguments to "' + head.val.name + '"? Expected ' + (argsAreMin ? 'at least ' : '') + nargs + ' but got ' + head.val.argCount + '.');
                 pendingComma = true;
             }
             else if(argsAreMin && tokens.length > 0 && tokens[0].type == TokenType.Comma) {
@@ -105,25 +113,30 @@ var parse = (function() {
             }
         }
         
+        // We may have broken out with a right paren (or end of input) and too few arguments.
+        if((argsAreMin && head.val.argCount < nargs) || (!argsAreMin && head.val.argCount != nargs)) {
+            var argCountDesc = (argsAreMin ? 'at least ' : '') + nargs,
+                message = 'Too few arguments to "' + head.val.name + '"? Expected ' + argCountDesc + ' but got ' + head.val.argCount;
+            
+            if(tokens.length === 0)
+                throw parseErrorAtEnd(message);
+            
+            throw parseErrorAtToken(tokens[0], message);
+        }
+        
         // If everything ended but we just ate a comma, that's an error.
         // For example: max(1, 2,
         if(pendingComma)
-            throw new Error('Expected an expression after comma');
+            throw parseErrorAtEnd('Expected an expression after comma.');
         
-        if(argsAreMin && head.val.argCount < nargs)
-            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected at least ' + nargs + ' but got ' + head.val.argCount);
-        
-        if(!argsAreMin && head.val.argCount != nargs)
-            throw new Error('Invalid number of arguments to ' + head.val.name + ': expected ' + nargs + ' but got ' + head.val.argCount);
-        
-        eatRPWithInsertion(tokens, 'Too many arguments to ' + head.val.name + '? Expected ' + nargs, env);
+        eatRPWithInsertion(tokens, 'Too many arguments to "' + head.val.name + '"? Expected ' + nargs + '.', env);
         
 		return fnparse;
 	}
 	
 	function parseDAT(env, tokens) {
 		if(tokens.length === 0)
-			throw new Error('Expected a datum');
+			throw parseErrorAtEnd('Expected a datum.');
 		
 		switch(tokens[0].type) {
 			case TokenType.Var:
@@ -137,20 +150,24 @@ var parse = (function() {
 			case TokenType.LP:
 				tokens.shift();
 				var eparse = parseE(env, tokens);
-				eatRPWithInsertion(tokens, 'Mismatched parentheses', env);
+				eatRPWithInsertion(tokens, 'Mismatched parentheses.', env);
 				return eparse;
 				
 			default:
-				throw new Error('Expected a datum');
+				throw parseErrorAtToken(tokens[0], 'Expected a datum.');
 		}
 	}
 	
 	function eatMandToken(tokens, type, friendly, hint) {
 		if(tokens.length === 0 || tokens[0].type != type) {
-			var errStr = 'Expected ' + (friendly || type);
-			if(hint) errStr += ' - ' + hint;
-			throw new Error(errStr);
-		}
+		    var errStr = 'Expected ' + (friendly || type) + '.';
+		    if(hint) errStr += ' ' + hint;
+		    
+		    if(tokens.length === 0)
+		        throw parseErrorAtEnd(errStr);
+		    
+            throw parseErrorAtToken(tokens[0], errStr);
+        }
 		
 		return tokens.shift();
 	}
@@ -159,7 +176,7 @@ var parse = (function() {
 	    // Emulate the TI-calculator's behavior of adding in missing close
 	    // parentheses if we've hit the end of the input.
 	    if(!env.noAutoParens && tokens.length === 0)
-            return Token(TokenType.RP);
+            return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
 	}
