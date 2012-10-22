@@ -15,6 +15,10 @@ var Token = function(type, val, rangeInInput) {
 	this.rangeInInput = rangeInInput;
 };
 
+Token.prototype.toString = function() {
+    return this.type + (this.val ? '(' + this.val.toString() + ')' : '');
+};
+
 var TokenType = {
     Num: 'num',
     Const: 'const',
@@ -36,6 +40,10 @@ var FnCall = function(env, name) {
 	this.name = name;
 	this.argCount = 0;
 	this.envVal = env.getFnVal(name);
+};
+
+FnCall.prototype.toString = function() {
+    return this.envVal.name ? this.envVal.name : this.name;
 };
 
 var lex = (function() {

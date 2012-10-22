@@ -24,6 +24,10 @@ var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 	this.nondeterministic = !!nondeterministic;
 };
 
+NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
+    return this.name;
+};
+
 var Environment = (function() {
 	var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
 		if(!(this instanceof Environment))
@@ -256,6 +260,10 @@ var Token = function(type, val, rangeInInput) {
 	this.rangeInInput = rangeInInput;
 };
 
+Token.prototype.toString = function() {
+    return this.type + (this.val ? '(' + this.val.toString() + ')' : '');
+};
+
 var TokenType = {
     Num: 'num',
     Const: 'const',
@@ -277,6 +285,10 @@ var FnCall = function(env, name) {
 	this.name = name;
 	this.argCount = 0;
 	this.envVal = env.getFnVal(name);
+};
+
+FnCall.prototype.toString = function() {
+    return this.envVal.name ? this.envVal.name : this.name;
 };
 
 var lex = (function() {
@@ -532,6 +544,34 @@ var parse = (function() {
 			
 		return true;
 	}
+	
+	function prettyPrint(pt, indent, isLast, isRoot) {
+	    var s = indent;
+	    
+	    if(!isRoot) {
+            if(isLast) {
+                s += '\\-';
+                indent += '  ';
+            }
+            else {
+                s += '|-';
+                indent += '| ';
+            }
+        }
+	    
+	    s += pt.root.toString() + '\n';
+	    
+	    if(pt.children) {
+            for(var i = 0; i < pt.children.length; i++)
+                s += prettyPrint(pt.children[i], indent, i == pt.children.length - 1);
+        }
+	    
+	    return s;
+	}
+	
+	ParseTree.prototype.toString = function() {
+	    return prettyPrint(this, '', false, true);
+	};
 
 	return function(env, tokens) {
 		var toks = tokens.slice(),

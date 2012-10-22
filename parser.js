@@ -23,6 +23,34 @@ var parse = (function() {
 			
 		return true;
 	}
+	
+	function prettyPrint(pt, indent, isLast, isRoot) {
+	    var s = indent;
+	    
+	    if(!isRoot) {
+            if(isLast) {
+                s += '\\-';
+                indent += '  ';
+            }
+            else {
+                s += '|-';
+                indent += '| ';
+            }
+        }
+	    
+	    s += pt.root.toString() + '\n';
+	    
+	    if(pt.children) {
+            for(var i = 0; i < pt.children.length; i++)
+                s += prettyPrint(pt.children[i], indent, i == pt.children.length - 1);
+        }
+	    
+	    return s;
+	}
+	
+	ParseTree.prototype.toString = function() {
+	    return prettyPrint(this, '', false, true);
+	};
 
 	return function(env, tokens) {
 		var toks = tokens.slice(),

@@ -19,6 +19,10 @@ var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
 	this.nondeterministic = !!nondeterministic;
 };
 
+NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
+    return this.name;
+};
+
 var Environment = (function() {
 	var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
 		if(!(this instanceof Environment))

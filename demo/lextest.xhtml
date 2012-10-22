@@ -22,9 +22,26 @@ function getInputDescOfRange(expr, range) {
     return start + ' -> ' + end + ': "' + expr.substring(start, end) + '"';
 }
 
+function nSpaces(n) {
+    var s = '';
+    for(var i = 0; i < n; i++)
+        s += ' ';
+    
+    return s;
+}
+
+function clearResults() {
+    $('#tres').text('');
+    $('#pres').text('');
+    $('#cres').text('');
+    $('#eres').text('');
+}
+
 function init() {
 	$('#frm').submit(function(e) {
 		e.preventDefault();
+		
+		clearResults();
 	
 		var vars = $('#vars').val().split(','),
 			vals = $('#vals').val().split(','),
@@ -32,8 +49,7 @@ function init() {
 			        !$('#autoParens').prop('checked'),
 			        !$('#implicitMul').prop('checked'),
 					!$('#powOp').prop('checked')),
-			f,
-			res;
+			skipOptimizations = !$('#optimize').prop('checked');
 		
 		for(var i = 0; i < vals.length; i++)
 		    vals[i] = parseFloat(vals[i]);
@@ -49,49 +65,71 @@ function init() {
 		sumFn.lengthIsMinimum = true;
 		env.addFn('sum', sumFn);
 		
-		var tokens;
+		var tokens, pt, fn;
 		
 		try {
 			var expr = $('#expr').val(),
-			    s = '';
+			    s = '',
+			    inputDescColumn = 30;
 			
 			tokens = JSG.Expr.Core.lex(env, expr);
 			
 			for(var i = 0; i < tokens.length; i++) {
-			    var t = tokens[i];
-			    s += t.type;
-			    if(t.val)
-			        s += '(' + t.val + ')';
+			    var t = tokens[i],
+			        tokenStr = t.toString();
 			    
-			    s += '\t\t';
-			    s += getInputDescOfRange(expr, t.rangeInInput);
-			    
-			    s += '\n';
+			    s += tokenStr + nSpaces(inputDescColumn - tokenStr.length);
+			    s += getInputDescOfRange(expr, t.rangeInInput) + '\n';
 			}
 			
 			$('#tres').text(s);
 		}
 		catch(exc) {
 		    var s = 'Error: ' + exc.message;
-		    if('range' in exc) {
-		        s += '\n[' + exc.range.start + ', ' + exc.range.end + ']';
-			    if(exc.range.end > exc.range.start || exc.range.end === undefined)
-			        s += ': "' + expr.substring(exc.range.start, exc.range.end) + '"'
-		    }
+		    if('range' in exc)
+		        s += '\n' + getInputDescOfRange(expr, exc.range);
+		    
 			$('#tres').text(s);
 		}
 		
 		if(tokens) {
 		    try {
-		        JSG.Expr.Core.parse(env, tokens);
-		        $('#pres').text('success');
+		        pt = JSG.Expr.Core.parse(env, tokens);
+		        $('#pres').text(pt.toString());
 		    }
 		    catch(exc) {
 		        var s = 'Error: ' + exc.message;
-                if('range' in exc) {
+                if('range' in exc)
                     s += '\n' + getInputDescOfRange(expr, exc.range);
-                }
+                
                 $('#pres').text(s);
+		    }
+		}
+		
+		if(pt) {
+		    try {
+                fn = JSG.Expr.Core.compile(env, pt, skipOptimizations);
+                $('#cres').text(fn.toString());
+            }
+            catch(exc) {
+                var s = 'Error: ' + exc.message;
+                if('range' in exc)
+                    s += '\n' + getInputDescOfRange(expr, exc.range);
+                
+                $('#cres').text(s);
+            }
+		}
+		
+		if(fn) {
+		    try {
+		        $('#eres').text(fn.apply(null, vals));
+		    }
+		    catch(exc) {
+                var s = 'Error: ' + exc.message;
+                if('range' in exc)
+                    s += '\n' + getInputDescOfRange(expr, exc.range);
+                
+                $('#eres').text(s);
 		    }
 		}
 	});
@@ -104,10 +142,14 @@ $(init);
 </head>
 <body>
 <form id='frm'>
-<label for="vars">Variables </label><input id="vars" value="x,y" /><br />
-<label for="expr">Expression </label><input id="expr" value="2xy" /><br />
-<label for="vals">Values </label><input id="vals" value="2, 4" /><br />
-<fieldset>
+
+<div style="float: left">
+    <label for="vars">Variables </label><input id="vars" value="x,y" style="font-family: monospace"/><br /><br />
+    <label for="expr">Expression </label><input id="expr" value="2xy" style="font-family: monospace"/><br /><br />
+    <label for="vals">Values </label><input id="vals" value="2, 4" style="font-family: monospace"/><br /><br />
+</div>
+
+<fieldset style="float: left; margin-left: 50px">
 	<legend>Options</legend>
 	<input type="checkbox" id="autoParens" checked="checked" />
 	<label for="autoParens">Automatic parenthesis closure</label><br />
@@ -115,15 +157,25 @@ $(init);
 	<label for="implicitMul">Implicit multiplication</label><br/>
 	<input type="checkbox" id="powOp" checked="checked" />
 	<label for="powOp">Exponentiation operator (^)</label><br/>
+	<input type="checkbox" id="optimize" checked="checked" />
+	<label for="optimize">Optimize compilation</label><br/>
 </fieldset>
-<br />
+
+<div style="clear: both" />
+
 <input type="submit" value="Evaluate" id="go" /><br />
 </form>
 <br />
-Tokenizing:
+<b>Lex</b>
 <pre id="tres" /><br />
-<br />
-Parsing:
-<pre id="pres" />
+
+<b>Parse</b>
+<pre id="pres" /><br />
+
+<b>Compile</b>
+<pre id="cres" /><br />
+
+<b>Evaluate</b>
+<pre id="eres" /><br />
 </body>
 </html>
