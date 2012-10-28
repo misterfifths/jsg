@@ -1,5 +1,6 @@
 var JSG = (function() {
     'use strict';
+        
 
 /** environment.js **/
 
@@ -986,5 +987,11 @@ var Expr = (function() {
     };
 })();
 
-    return { Expr: Expr };
+    var _exports = { Expr: Expr };
+    
+    // Support node's modules
+    if(typeof module != 'undefined' && module.exports)
+        module.exports = _exports;
+    
+    return _exports;
 })();
