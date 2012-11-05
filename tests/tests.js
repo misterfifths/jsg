@@ -7,11 +7,11 @@ function vexprEquals(varMap, expr, expected, message) {
 }
 
 function eexprEquals(env, expr, expected, message) {
-    equal(JSG.Expr.compile(env, expr)(), expected, message);
+    equal(JSG.Expr(env, expr)(), expected, message);
 }
 
 function veexprEquals(env, varVals, expr, expected, message) {
-    equal(JSG.Expr.compile(env, expr).apply(null, varVals), expected, message);
+    equal(JSG.Expr(env, expr).apply(null, varVals), expected, message);
 }
 
 function exprThrows(expr, expected, message) {
@@ -23,11 +23,11 @@ function vexprThrows(varMap, expr, expected, message) {
 }
 
 function eexprThrows(env, expr, expected, message) {
-    throws(function() { JSG.Expr.compile(env, expr)(); }, expected, message);
+    throws(function() { JSG.Expr(env, expr)(); }, expected, message);
 }
 
 function veexprThrows(env, varVals, expr, expected, message) {
-    throws(function() { JSG.Expr.compile(env, expr).apply(null, varVals); }, expected, message);
+    throws(function() { JSG.Expr(env, expr).apply(null, varVals); }, expected, message);
 }
 
 test('miscellaneous syntax checks', function() {
@@ -98,7 +98,7 @@ test('nondeterministic functions', function() {
     inc.nondeterministic = true;
     env.addFn('inc', inc);
     
-    var fn = JSG.Expr.compile(env, 'inc()');
+    var fn = JSG.Expr(env, 'inc()');
     notEqual(fn(), fn(), 'subsequent calls to a nondeterministic function do not return the same value');
 });
 

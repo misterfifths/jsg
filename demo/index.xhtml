@@ -79,7 +79,7 @@ function init() {
 			    inputDescColumn = 30;
 			
 			sT = new Date().getTime();
-			tokens = JSG.Expr.Core.lex(env, expr);
+			tokens = JSG.Expr.lex(env, expr);
 			eT = new Date().getTime();
 			
 			for(var i = 0; i < tokens.length; i++) {
@@ -104,7 +104,7 @@ function init() {
 		if(tokens) {
 		    try {
 		        sT = new Date().getTime();
-		        pt = JSG.Expr.Core.parse(env, tokens);
+		        pt = JSG.Expr.parse(env, tokens);
 		        eT = new Date().getTime();
 		        
 		        $('#pres').text(pt.toString());
@@ -122,7 +122,7 @@ function init() {
 		if(pt) {
 		    try {
 		        sT = new Date().getTime();
-                fn = JSG.Expr.Core.compile(env, pt, { optimize: optimize });
+                fn = JSG.Expr.compile(env, pt, { optimize: optimize });
                 eT = new Date().getTime();
                 
                 $('#cres').text(fn.toString());

@@ -1,5 +1,5 @@
 var Expr = (function() {
-    function exprCompile() {
+    function friendlyCompile() {
         var env, s;
         
         switch(arguments.length) {
@@ -71,23 +71,27 @@ var Expr = (function() {
         return compile(env, parse(env, lex(env, s))).apply(null, vals);
     }
     
-    return {
-        compile: exprCompile,
+    // Assemble the public interface:
+    var toExpose = {
         oneshot: oneshot,
-
         Environment: Environment,
         NativeOp: NativeOp,
         NativeFn: NativeFn,
         
-        Core: {
-            compile: compile,
-            lex: lex,
-            parse: parse,
-            
-            ParseTree: ParseTree,
-            Token: Token,
-            TokenType: TokenType,
-            FnCall: FnCall
-        }
+        compile: compile,
+        lex: lex,
+        parse: parse,
+        
+        ParseTree: ParseTree,
+        Token: Token,
+        TokenType: TokenType,
+        FnCall: FnCall
     };
+    
+    for(var key in toExpose) {
+        if(toExpose.hasOwnProperty(key))
+            friendlyCompile[key] = toExpose[key];
+    }
+    
+    return friendlyCompile;
 })();
