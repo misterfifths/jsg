@@ -167,7 +167,7 @@ var lex = (function() {
     
     function addImplicitMul(state, numOk) {
         numOk = numOk !== false;
-        if(state.env.noImplicitMul || state.tokens.length === 0) return;
+        if(!state.env.options.implicitMul || state.tokens.length === 0) return;
         
         var lastType = state.tokens[state.tokens.length - 1].type;
         if(lastType == TokenType.RP ||
@@ -202,7 +202,7 @@ var lex = (function() {
             state.s = newS;
             return;
         }
-        else if(!state.env.noImplicitMul && id.length > 1) {
+        else if(state.env.options.implicitMul && id.length > 1) {
             while(id.length > 1) {
                 newS = id.charAt(id.length - 1) + newS;
                 id = id.substr(0, id.length - 1);
@@ -263,7 +263,7 @@ var lex = (function() {
             pushFnToken(state, TokenType.AddOp, c);
         else if(env.isMulOp(c))
             pushFnToken(state, TokenType.MulOp, c);
-        else if(!env.noPowOp && c == env._powOpId)
+        else if(env.options.powOp && c == env._powOpId)
             pushFnToken(state, TokenType.Pow, '_pow', 1);
         else
             throw state.parseErrorAtCurrentS('Expected an operator.');

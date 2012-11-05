@@ -1,5 +1,19 @@
 var JSG = (function() {
     'use strict';
+    
+    function applyDefaults(obj, defaults) {
+        var res = {};
+        for(var key in defaults) {
+            if(defaults.hasOwnProperty(key)) {
+                if(obj && obj.hasOwnProperty(key))
+                    res[key] = obj[key];
+                else
+                    res[key] = defaults[key];
+            }
+        }
+        
+        return res;
+    }
         
     %CODE%
 

@@ -50,11 +50,11 @@ function init() {
 	
 		var vars = $('#vars').val().split(','),
 			vals = $('#vals').val().split(','),
-			env = JSG.Expr.Environment(vars,
-			        !$('#autoParens').prop('checked'),
-			        !$('#implicitMul').prop('checked'),
-					!$('#powOp').prop('checked')),
-			skipOptimizations = !$('#optimize').prop('checked'),
+			env = JSG.Expr.Environment(vars, {
+			        autoParens: $('#autoParens').prop('checked'),
+			        implicitMul: $('#implicitMul').prop('checked'),
+					powOp: $('#powOp').prop('checked') }),
+			optimize = $('#optimize').prop('checked'),
 			sT, eT;
 		
 		for(var i = 0; i < vals.length; i++)
@@ -122,7 +122,7 @@ function init() {
 		if(pt) {
 		    try {
 		        sT = new Date().getTime();
-                fn = JSG.Expr.Core.compile(env, pt, skipOptimizations);
+                fn = JSG.Expr.Core.compile(env, pt, { optimize: optimize });
                 eT = new Date().getTime();
                 
                 $('#cres').text(fn.toString());

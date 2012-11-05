@@ -1,10 +1,23 @@
 var JSG = (function() {
     'use strict';
+    
+    function applyDefaults(obj, defaults) {
+        var res = {};
+        for(var key in defaults) {
+            if(defaults.hasOwnProperty(key)) {
+                if(obj && obj.hasOwnProperty(key))
+                    res[key] = obj[key];
+                else
+                    res[key] = defaults[key];
+            }
+        }
+        
+        return res;
+    }
         
 
 /** environment.js **/
 
-// TODO: these as parts of Environment
 var NativeOp = function(name, length) {
     if(!(this instanceof NativeOp))
         return new NativeOp(name, length);
@@ -15,14 +28,16 @@ var NativeOp = function(name, length) {
     this.nondeterministic = false;
 };
 
-var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
+var NativeFn = function(name, length, options) {
     if(!(this instanceof NativeFn))
-        return new NativeFn(name, length, lengthIsMinimum, nondeterministic);
+        return new NativeFn(name, length, options);
+    
+    options = applyDefaults(options, { lengthIsMinimum: false, nondeterministic: false });
     
     this.name = name;
     this.length = length;
-    this.lengthIsMinimum = !!lengthIsMinimum;
-    this.nondeterministic = !!nondeterministic;
+    this.lengthIsMinimum = options.lengthIsMinimum;
+    this.nondeterministic = options.nondeterministic;
 };
 
 NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
@@ -30,18 +45,16 @@ NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
 };
 
 var Environment = (function() {
-    var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
+    var Environment = function(vars, options) {
         if(!(this instanceof Environment))
-            return new Environment(vars, noAutoParens, noImplicitMul, noPowOp);
+            return new Environment(vars, options);
+    
+        this.options = applyDefaults(options, { autoParens: true, implicitMul: true, powOp: true });
     
         this.fns = clone(defFns);
         this.consts = clone(defConsts);
         this.addOps = clone(defAddOps);
         this.mulOps = clone(defMulOps);
-        
-        this.noAutoParens = !!noAutoParens;
-        this.noImplicitMul = !!noImplicitMul;
-        this.noPowOp = !!noPowOp;
         
         // important things for the parser & lexer
         this._implicitMulOpId = '*';
@@ -85,16 +98,16 @@ var Environment = (function() {
         logn: function(n, x) { return Math.log(x) / Math.log(n); },
         
         // miscellaneous
-        max: NativeFn('Math.max', 2, true),
-        min: NativeFn('Math.min', 2, true),
+        max: NativeFn('Math.max', 2, { lengthIsMinimum: true }),
+        min: NativeFn('Math.min', 2, { lengthIsMinimum: true }),
         abs: NativeFn('Math.abs', 1),
         floor: NativeFn('Math.floor', 1),
         ceil: NativeFn('Math.ceil', 1),
         ceiling: NativeFn('Math.ceil', 1),
         round: NativeFn('Math.round', 1),
-        random: NativeFn('Math.random', 0, false, true),
-        rnd: NativeFn('Math.random', 0, false, true),
-        rand: NativeFn('Math.random', 0, false, true),
+        random: NativeFn('Math.random', 0, { nondeterministic: true }),
+        rnd: NativeFn('Math.random', 0, { nondeterministic: true }),
+        rand: NativeFn('Math.random', 0, { nondeterministic: true }),
         mod: NativeOp('%', 2)
     };
     
@@ -413,7 +426,7 @@ var lex = (function() {
     
     function addImplicitMul(state, numOk) {
         numOk = numOk !== false;
-        if(state.env.noImplicitMul || state.tokens.length === 0) return;
+        if(!state.env.options.implicitMul || state.tokens.length === 0) return;
         
         var lastType = state.tokens[state.tokens.length - 1].type;
         if(lastType == TokenType.RP ||
@@ -448,7 +461,7 @@ var lex = (function() {
             state.s = newS;
             return;
         }
-        else if(!state.env.noImplicitMul && id.length > 1) {
+        else if(state.env.options.implicitMul && id.length > 1) {
             while(id.length > 1) {
                 newS = id.charAt(id.length - 1) + newS;
                 id = id.substr(0, id.length - 1);
@@ -509,7 +522,7 @@ var lex = (function() {
             pushFnToken(state, TokenType.AddOp, c);
         else if(env.isMulOp(c))
             pushFnToken(state, TokenType.MulOp, c);
-        else if(!env.noPowOp && c == env._powOpId)
+        else if(env.options.powOp && c == env._powOpId)
             pushFnToken(state, TokenType.Pow, '_pow', 1);
         else
             throw state.parseErrorAtCurrentS('Expected an operator.');
@@ -729,7 +742,7 @@ var parse = (function() {
     function eatRPWithInsertion(tokens, hint, env) {
         // Emulate the TI-calculator's behavior of adding in missing close
         // parentheses if we've hit the end of the input.
-        if(!env.noAutoParens && tokens.length === 0)
+        if(env.options.autoParens && tokens.length === 0)
             return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
@@ -739,9 +752,9 @@ var parse = (function() {
 /** compiler.js **/
 
 var compile = (function() {
-    function internalCompile(env, parseTree, skipOptimizations) {
-        skipOptimizations = !!skipOptimizations;
-        
+    function internalCompile(env, parseTree, options) {
+        options = applyDefaults(options, { optimize: true });
+    
         // envAccumulator becomes a map of all the things used from the
         // Environment in the final compiled form of the function. It is from
         // names in the eval string to the version that reference 'env', so we
@@ -754,8 +767,10 @@ var compile = (function() {
         
         var args = mangledVarNamesAsArgString(env),
             envAccumulator = {},
-            body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, !skipOptimizations) + '; })',
-            envAccumulatorHasProps = false;
+            envAccumulatorHasProps = false,
+            body;
+        
+        body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, options.optimize) + '; })';
         
         for(var propName in envAccumulator) {
             if(envAccumulator.hasOwnProperty(propName)) {
@@ -856,7 +871,7 @@ var compile = (function() {
             // variables (otherwise it wouldn't be constant).
             // We obviously have to turn off optimizations in this go-round,
             // or we'll just recurse endlessly.
-            return internalCompile(env, pt, true)().toString();
+            return internalCompile(env, pt, { optimize: false })().toString();
         }
         
         // Otherwise, convert other things as appropriate...

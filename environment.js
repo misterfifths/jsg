@@ -1,4 +1,3 @@
-// TODO: these as parts of Environment
 var NativeOp = function(name, length) {
     if(!(this instanceof NativeOp))
         return new NativeOp(name, length);
@@ -9,14 +8,16 @@ var NativeOp = function(name, length) {
     this.nondeterministic = false;
 };
 
-var NativeFn = function(name, length, lengthIsMinimum, nondeterministic) {
+var NativeFn = function(name, length, options) {
     if(!(this instanceof NativeFn))
-        return new NativeFn(name, length, lengthIsMinimum, nondeterministic);
+        return new NativeFn(name, length, options);
+    
+    options = applyDefaults(options, { lengthIsMinimum: false, nondeterministic: false });
     
     this.name = name;
     this.length = length;
-    this.lengthIsMinimum = !!lengthIsMinimum;
-    this.nondeterministic = !!nondeterministic;
+    this.lengthIsMinimum = options.lengthIsMinimum;
+    this.nondeterministic = options.nondeterministic;
 };
 
 NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
@@ -24,18 +25,16 @@ NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
 };
 
 var Environment = (function() {
-    var Environment = function(vars, noAutoParens, noImplicitMul, noPowOp) {
+    var Environment = function(vars, options) {
         if(!(this instanceof Environment))
-            return new Environment(vars, noAutoParens, noImplicitMul, noPowOp);
+            return new Environment(vars, options);
+    
+        this.options = applyDefaults(options, { autoParens: true, implicitMul: true, powOp: true });
     
         this.fns = clone(defFns);
         this.consts = clone(defConsts);
         this.addOps = clone(defAddOps);
         this.mulOps = clone(defMulOps);
-        
-        this.noAutoParens = !!noAutoParens;
-        this.noImplicitMul = !!noImplicitMul;
-        this.noPowOp = !!noPowOp;
         
         // important things for the parser & lexer
         this._implicitMulOpId = '*';
@@ -79,16 +78,16 @@ var Environment = (function() {
         logn: function(n, x) { return Math.log(x) / Math.log(n); },
         
         // miscellaneous
-        max: NativeFn('Math.max', 2, true),
-        min: NativeFn('Math.min', 2, true),
+        max: NativeFn('Math.max', 2, { lengthIsMinimum: true }),
+        min: NativeFn('Math.min', 2, { lengthIsMinimum: true }),
         abs: NativeFn('Math.abs', 1),
         floor: NativeFn('Math.floor', 1),
         ceil: NativeFn('Math.ceil', 1),
         ceiling: NativeFn('Math.ceil', 1),
         round: NativeFn('Math.round', 1),
-        random: NativeFn('Math.random', 0, false, true),
-        rnd: NativeFn('Math.random', 0, false, true),
-        rand: NativeFn('Math.random', 0, false, true),
+        random: NativeFn('Math.random', 0, { nondeterministic: true }),
+        rnd: NativeFn('Math.random', 0, { nondeterministic: true }),
+        rand: NativeFn('Math.random', 0, { nondeterministic: true }),
         mod: NativeOp('%', 2)
     };
     

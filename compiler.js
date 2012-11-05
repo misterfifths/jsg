@@ -1,7 +1,7 @@
 var compile = (function() {
-    function internalCompile(env, parseTree, skipOptimizations) {
-        skipOptimizations = !!skipOptimizations;
-        
+    function internalCompile(env, parseTree, options) {
+        options = applyDefaults(options, { optimize: true });
+    
         // envAccumulator becomes a map of all the things used from the
         // Environment in the final compiled form of the function. It is from
         // names in the eval string to the version that reference 'env', so we
@@ -14,8 +14,10 @@ var compile = (function() {
         
         var args = mangledVarNamesAsArgString(env),
             envAccumulator = {},
-            body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, !skipOptimizations) + '; })',
-            envAccumulatorHasProps = false;
+            envAccumulatorHasProps = false,
+            body;
+        
+        body = '(function(' + args + ') { return ' + ptToStr(env, parseTree, envAccumulator, options.optimize) + '; })';
         
         for(var propName in envAccumulator) {
             if(envAccumulator.hasOwnProperty(propName)) {
@@ -116,7 +118,7 @@ var compile = (function() {
             // variables (otherwise it wouldn't be constant).
             // We obviously have to turn off optimizations in this go-round,
             // or we'll just recurse endlessly.
-            return internalCompile(env, pt, true)().toString();
+            return internalCompile(env, pt, { optimize: false })().toString();
         }
         
         // Otherwise, convert other things as appropriate...

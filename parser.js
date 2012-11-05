@@ -207,7 +207,7 @@ var parse = (function() {
     function eatRPWithInsertion(tokens, hint, env) {
         // Emulate the TI-calculator's behavior of adding in missing close
         // parentheses if we've hit the end of the input.
-        if(!env.noAutoParens && tokens.length === 0)
+        if(env.options.autoParens && tokens.length === 0)
             return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
