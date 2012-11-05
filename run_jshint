@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./compile && jshint build/jsg.js --config jshint_config.json

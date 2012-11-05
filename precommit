@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./run_jshint && open tests/index.html
