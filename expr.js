@@ -9,7 +9,7 @@ var Expr = (function() {
                 if(typeof arguments[0] != 'string')
                     throw new Error('Invalid arguments');
                 
-                env = Environment();
+                env = new Environment();
                 s = arguments[0];
                 break;
             case 2:
@@ -21,9 +21,9 @@ var Expr = (function() {
                 if(arguments[0] instanceof Environment)
                     env = arguments[0];
                 else if(typeof arguments[0] == 'string')
-                    env = Environment(arguments[0].split(','));
+                    env = new Environment(arguments[0].split(','));
                 else if(Object.prototype.toString.call(arguments[0]) === '[object Array]')
-                    env = Environment(arguments[0]);
+                    env = new Environment(arguments[0]);
                 else
                     throw new Error('Invalid arguments');
                 break;
@@ -38,7 +38,7 @@ var Expr = (function() {
                 if(typeof arguments[arguments.length - 1] != 'string')
                     throw new Error('Invalid arguments');
                 
-                env = Environment(vars);
+                env = new Environment(vars);
                 s = arguments[arguments.length - 1];
         }
         
@@ -52,7 +52,7 @@ var Expr = (function() {
         if(arguments.length == 1) {
             if(typeof vars != 'string')
                 throw new Error('Invalid arguments');
-            env = Environment();
+            env = new Environment();
             s = vars;
         }
         else {
@@ -65,7 +65,7 @@ var Expr = (function() {
                 }
             }
             
-            env = Environment(vns);
+            env = new Environment(vns);
         }
         
         return compile(env, parse(env, lex(env, s))).apply(null, vals);

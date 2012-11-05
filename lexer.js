@@ -7,9 +7,6 @@ var parseError = function(message, start, end) {
 };
 
 var Token = function(type, val, rangeInInput) {
-    if(!(this instanceof Token))
-        return new Token(type, val, rangeInInput);
-
     this.type = type;
     this.val = val;
     this.rangeInInput = rangeInInput;
@@ -34,9 +31,6 @@ var TokenType = {
 };
 
 var FnCall = function(env, name) {
-    if(!(this instanceof FnCall))
-        return new FnCall(env, name);
-    
     this.name = name;
     this.argCount = 0;
     this.envVal = env.getFnVal(name);
@@ -52,9 +46,6 @@ var lex = (function() {
         simpleNumRegex = /^[0-9.]/;
     
     var LexState = function(env, s) {
-        if(!(this instanceof LexState))
-            return new LexState(env, s);
-        
         var unwhitespaced = removeWhitespaceWithMap(s);
         
         this.env = env;
@@ -105,7 +96,7 @@ var lex = (function() {
     }
 
     return function(env, expr) {
-        var state = LexState(env, expr);
+        var state = new LexState(env, expr);
         
         while(state.s.length > 0)
             realLex(state);
@@ -156,13 +147,13 @@ var lex = (function() {
         if(!val)
             length = 1;
         
-        state.tokens.push(Token(type, val, state.rangeFromCurrentS(length)));
+        state.tokens.push(new Token(type, val, state.rangeFromCurrentS(length)));
     }
     
     function pushFnToken(state, type, id, lengthOverride) {
         var length = lengthOverride !== undefined ? lengthOverride : id.length;
         
-        pushToken(state, type, FnCall(state.env, id), length);
+        pushToken(state, type, new FnCall(state.env, id), length);
     }
     
     function addImplicitMul(state, numOk) {
@@ -224,9 +215,9 @@ var lex = (function() {
         var tok,
             env = state.env;
         
-        if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id), state.rangeFromCurrentS(id.length));
-        else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
-        else if(env.isVarName(id)) tok = Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
+        if(env.isFnName(id)) tok = new Token(TokenType.Fn, new FnCall(state.env, id), state.rangeFromCurrentS(id.length));
+        else if(env.isConst(id)) tok = new Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
+        else if(env.isVarName(id)) tok = new Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
         
         return tok;
     }

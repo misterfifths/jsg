@@ -50,7 +50,7 @@ function init() {
 	
 		var vars = $('#vars').val().split(','),
 			vals = $('#vals').val().split(','),
-			env = JSG.Expr.Environment(vars, {
+			env = new JSG.Expr.Environment(vars, {
 			        autoParens: $('#autoParens').prop('checked'),
 			        implicitMul: $('#implicitMul').prop('checked'),
 					powOp: $('#powOp').prop('checked') }),

@@ -7,7 +7,7 @@
   "trailing": true,
   "forin": true,
   "evil": true,
-  "newcap": false,
+  "newcap": true,
   "quotmark": "single",
 
   "smarttabs": true

@@ -1,8 +1,5 @@
 var ParseTree = (function() {
     var ParseTree = function(root, children) {
-        if(!(this instanceof ParseTree))
-            return new ParseTree(root, children);
-        
         this.root = root;
         this.children = children;
     };
@@ -79,7 +76,7 @@ var parse = (function() {
             
         while(tokens.length > 0 && tokens[0].type == TokenType.AddOp) {
             var temppt = eparse;
-            eparse = ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
+            eparse = new ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
         }
         
         return eparse;
@@ -90,7 +87,7 @@ var parse = (function() {
         
         while(tokens.length > 0 && tokens[0].type == TokenType.MulOp) {
             var temppt = tmparse;
-            tmparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
+            tmparse = new ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
         }
         
         return tmparse;
@@ -103,13 +100,13 @@ var parse = (function() {
             throw parseErrorAtEnd('Expected a factor.');
         
         if(tokens[0].type == TokenType.Negate)
-            fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
+            fparse = new ParseTree(tokens.shift(), [parseF(env, tokens)]);
         else {
             fparse = parseDAT(env, tokens);
             
             if(tokens.length > 0 && tokens[0].type == TokenType.Pow) {
                 var temppt = fparse;
-                fparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
+                fparse = new ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
             }
         }
         
@@ -118,7 +115,7 @@ var parse = (function() {
     
     function parseFN(env, tokens) {
         var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
-            fnparse = ParseTree(head, []);
+            fnparse = new ParseTree(head, []);
         
         eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis.');
         
@@ -174,7 +171,7 @@ var parse = (function() {
             case TokenType.Var:
             case TokenType.Num:
             case TokenType.Const:
-                return ParseTree(tokens.shift());
+                return new ParseTree(tokens.shift());
                 
             case TokenType.Fn:
                 return parseFN(env, tokens);
@@ -208,7 +205,7 @@ var parse = (function() {
         // Emulate the TI-calculator's behavior of adding in missing close
         // parentheses if we've hit the end of the input.
         if(env.options.autoParens && tokens.length === 0)
-            return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
+            return new Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
     }

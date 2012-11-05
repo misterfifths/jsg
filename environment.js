@@ -1,7 +1,4 @@
 var NativeOp = function(name, length) {
-    if(!(this instanceof NativeOp))
-        return new NativeOp(name, length);
-
     this.name = name;
     this.length = length;
     this.lengthIsMinimum = false;
@@ -9,9 +6,6 @@ var NativeOp = function(name, length) {
 };
 
 var NativeFn = function(name, length, options) {
-    if(!(this instanceof NativeFn))
-        return new NativeFn(name, length, options);
-    
     options = applyDefaults(options, { lengthIsMinimum: false, nondeterministic: false });
     
     this.name = name;
@@ -26,9 +20,6 @@ NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
 
 var Environment = (function() {
     var Environment = function(vars, options) {
-        if(!(this instanceof Environment))
-            return new Environment(vars, options);
-    
         this.options = applyDefaults(options, { autoParens: true, implicitMul: true, powOp: true });
     
         this.fns = clone(defFns);
@@ -39,8 +30,8 @@ var Environment = (function() {
         // important things for the parser & lexer
         this._implicitMulOpId = '*';
         this._subtractOpId = '-';
-        this._negate = NativeOp('-', 1);
-        this._pow = NativeFn('Math.pow', 2);
+        this._negate = new NativeOp('-', 1);
+        this._pow = new NativeFn('Math.pow', 2);
         this._powOpId = '^';
         
         this.vars = [];
@@ -55,40 +46,40 @@ var Environment = (function() {
     
     defFns = {
         // trig
-        sin: NativeFn('Math.sin', 1),
-        cos: NativeFn('Math.cos', 1),
-        tan: NativeFn('Math.tan', 1),
-        asin: NativeFn('Math.asin', 1),
-        arcsin: NativeFn('Math.asin', 1),
-        acos: NativeFn('Math.acos', 1),
-        arccos: NativeFn('Math.acos', 1),
-        atan: NativeFn('Math.atan', 1),
-        arctan: NativeFn('Math.atan', 1),
-        atan2: NativeFn('Math.atan2', 2),
-        arctan2: NativeFn('Math.atan2', 2),
+        sin: new NativeFn('Math.sin', 1),
+        cos: new NativeFn('Math.cos', 1),
+        tan: new NativeFn('Math.tan', 1),
+        asin: new NativeFn('Math.asin', 1),
+        arcsin: new NativeFn('Math.asin', 1),
+        acos: new NativeFn('Math.acos', 1),
+        arccos: new NativeFn('Math.acos', 1),
+        atan: new NativeFn('Math.atan', 1),
+        arctan: new NativeFn('Math.atan', 1),
+        atan2: new NativeFn('Math.atan2', 2),
+        arctan2: new NativeFn('Math.atan2', 2),
         
         // exponentiation, etc.
-        exp: NativeFn('Math.exp', 1),
-        sqrt: NativeFn('Math.sqrt', 1),
-        pow: NativeFn('Math.pow', 2),
-        log: NativeFn('Math.log', 1),
-        ln: NativeFn('Math.log', 1),
+        exp: new NativeFn('Math.exp', 1),
+        sqrt: new NativeFn('Math.sqrt', 1),
+        pow: new NativeFn('Math.pow', 2),
+        log: new NativeFn('Math.log', 1),
+        ln: new NativeFn('Math.log', 1),
         log10: function(x) { return Math.log(x) / Math.LN10; },
         log2: function(x) { return Math.log(x) / Math.LN2; },
         logn: function(n, x) { return Math.log(x) / Math.log(n); },
         
         // miscellaneous
-        max: NativeFn('Math.max', 2, { lengthIsMinimum: true }),
-        min: NativeFn('Math.min', 2, { lengthIsMinimum: true }),
-        abs: NativeFn('Math.abs', 1),
-        floor: NativeFn('Math.floor', 1),
-        ceil: NativeFn('Math.ceil', 1),
-        ceiling: NativeFn('Math.ceil', 1),
-        round: NativeFn('Math.round', 1),
-        random: NativeFn('Math.random', 0, { nondeterministic: true }),
-        rnd: NativeFn('Math.random', 0, { nondeterministic: true }),
-        rand: NativeFn('Math.random', 0, { nondeterministic: true }),
-        mod: NativeOp('%', 2)
+        max: new NativeFn('Math.max', 2, { lengthIsMinimum: true }),
+        min: new NativeFn('Math.min', 2, { lengthIsMinimum: true }),
+        abs: new NativeFn('Math.abs', 1),
+        floor: new NativeFn('Math.floor', 1),
+        ceil: new NativeFn('Math.ceil', 1),
+        ceiling: new NativeFn('Math.ceil', 1),
+        round: new NativeFn('Math.round', 1),
+        random: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        rnd: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        rand: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        mod: new NativeOp('%', 2)
     };
     
     defConsts = {
@@ -105,14 +96,14 @@ var Environment = (function() {
     };
     
     defAddOps = {
-        '+': NativeOp('+', 2),
-        '-': NativeOp('-', 2)
+        '+': new NativeOp('+', 2),
+        '-': new NativeOp('-', 2)
     };
     
     defMulOps = {
-        '*': NativeOp('*', 2),
-        '/': NativeOp('/', 2),
-        '%': NativeOp('%', 2)
+        '*': new NativeOp('*', 2),
+        '/': new NativeOp('/', 2),
+        '%': new NativeOp('%', 2)
     };
 
     function clone(obj) {

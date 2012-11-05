@@ -55,7 +55,7 @@ test('exponent rules', function() {
     exprEquals('4+2^2+1', 9, 'exponents are evaluated before addition');
     exprEquals('-2^2', -4, 'negation takes effect after exponentiation');
     
-    var env = JSG.Expr.Environment([], { powOp: false });
+    var env = new JSG.Expr.Environment([], { powOp: false });
     eexprThrows(env, '2^2', 'exponentiation disabled by Environment setting');
 });
 
@@ -65,7 +65,7 @@ test('implicit multiplication', function() {
     vexprEquals({ x: 2, y: 3 }, '2xye', 12 * Math.E, 'implicit multiplication added around variables');
     exprThrows('1.2.2', 'implicit multiplication not added between adjacent numbers');
     
-    var env = JSG.Expr.Environment([], { implicitMul: false });
+    var env = new JSG.Expr.Environment([], { implicitMul: false });
     eexprThrows(env, '2epi', 'implicit multiplication disabled by Environment setting');
 });
 
@@ -86,14 +86,14 @@ test('paren completion', function() {
     exprThrows('rand(1', 'parens are not completed for an invalid number of arguments');
     exprThrows('sin(2,', 'commas are not consumed at the end of an argument list');
     
-    var env = JSG.Expr.Environment([], { autoParens: false });
+    var env = new JSG.Expr.Environment([], { autoParens: false });
     eexprThrows(env, 'mod(6, 4', 'paren completion disabled by Environment setting');
 });
 
 test('nondeterministic functions', function() {
     var counter = 0,
         inc = function() { return counter++; },
-        env = JSG.Expr.Environment();
+        env = new JSG.Expr.Environment();
     
     inc.nondeterministic = true;
     env.addFn('inc', inc);
@@ -106,7 +106,7 @@ test('function arity checks', function() {
     exprThrows('sin(1, 2)', 'More than the fixed number of arguments disallowed');
     exprThrows('sin()', 'Fewer than the fixed number of arguments disallowed');
 
-    var env = JSG.Expr.Environment(),
+    var env = new JSG.Expr.Environment(),
         sumFn = function(x, y) {
             var sum = x + y;
             for(var i = 2; i < arguments.length; i++)

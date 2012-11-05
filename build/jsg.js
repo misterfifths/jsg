@@ -19,9 +19,6 @@ var JSG = (function() {
 /** environment.js **/
 
 var NativeOp = function(name, length) {
-    if(!(this instanceof NativeOp))
-        return new NativeOp(name, length);
-
     this.name = name;
     this.length = length;
     this.lengthIsMinimum = false;
@@ -29,9 +26,6 @@ var NativeOp = function(name, length) {
 };
 
 var NativeFn = function(name, length, options) {
-    if(!(this instanceof NativeFn))
-        return new NativeFn(name, length, options);
-    
     options = applyDefaults(options, { lengthIsMinimum: false, nondeterministic: false });
     
     this.name = name;
@@ -46,9 +40,6 @@ NativeOp.prototype.toString = NativeFn.prototype.toString = function() {
 
 var Environment = (function() {
     var Environment = function(vars, options) {
-        if(!(this instanceof Environment))
-            return new Environment(vars, options);
-    
         this.options = applyDefaults(options, { autoParens: true, implicitMul: true, powOp: true });
     
         this.fns = clone(defFns);
@@ -59,8 +50,8 @@ var Environment = (function() {
         // important things for the parser & lexer
         this._implicitMulOpId = '*';
         this._subtractOpId = '-';
-        this._negate = NativeOp('-', 1);
-        this._pow = NativeFn('Math.pow', 2);
+        this._negate = new NativeOp('-', 1);
+        this._pow = new NativeFn('Math.pow', 2);
         this._powOpId = '^';
         
         this.vars = [];
@@ -75,40 +66,40 @@ var Environment = (function() {
     
     defFns = {
         // trig
-        sin: NativeFn('Math.sin', 1),
-        cos: NativeFn('Math.cos', 1),
-        tan: NativeFn('Math.tan', 1),
-        asin: NativeFn('Math.asin', 1),
-        arcsin: NativeFn('Math.asin', 1),
-        acos: NativeFn('Math.acos', 1),
-        arccos: NativeFn('Math.acos', 1),
-        atan: NativeFn('Math.atan', 1),
-        arctan: NativeFn('Math.atan', 1),
-        atan2: NativeFn('Math.atan2', 2),
-        arctan2: NativeFn('Math.atan2', 2),
+        sin: new NativeFn('Math.sin', 1),
+        cos: new NativeFn('Math.cos', 1),
+        tan: new NativeFn('Math.tan', 1),
+        asin: new NativeFn('Math.asin', 1),
+        arcsin: new NativeFn('Math.asin', 1),
+        acos: new NativeFn('Math.acos', 1),
+        arccos: new NativeFn('Math.acos', 1),
+        atan: new NativeFn('Math.atan', 1),
+        arctan: new NativeFn('Math.atan', 1),
+        atan2: new NativeFn('Math.atan2', 2),
+        arctan2: new NativeFn('Math.atan2', 2),
         
         // exponentiation, etc.
-        exp: NativeFn('Math.exp', 1),
-        sqrt: NativeFn('Math.sqrt', 1),
-        pow: NativeFn('Math.pow', 2),
-        log: NativeFn('Math.log', 1),
-        ln: NativeFn('Math.log', 1),
+        exp: new NativeFn('Math.exp', 1),
+        sqrt: new NativeFn('Math.sqrt', 1),
+        pow: new NativeFn('Math.pow', 2),
+        log: new NativeFn('Math.log', 1),
+        ln: new NativeFn('Math.log', 1),
         log10: function(x) { return Math.log(x) / Math.LN10; },
         log2: function(x) { return Math.log(x) / Math.LN2; },
         logn: function(n, x) { return Math.log(x) / Math.log(n); },
         
         // miscellaneous
-        max: NativeFn('Math.max', 2, { lengthIsMinimum: true }),
-        min: NativeFn('Math.min', 2, { lengthIsMinimum: true }),
-        abs: NativeFn('Math.abs', 1),
-        floor: NativeFn('Math.floor', 1),
-        ceil: NativeFn('Math.ceil', 1),
-        ceiling: NativeFn('Math.ceil', 1),
-        round: NativeFn('Math.round', 1),
-        random: NativeFn('Math.random', 0, { nondeterministic: true }),
-        rnd: NativeFn('Math.random', 0, { nondeterministic: true }),
-        rand: NativeFn('Math.random', 0, { nondeterministic: true }),
-        mod: NativeOp('%', 2)
+        max: new NativeFn('Math.max', 2, { lengthIsMinimum: true }),
+        min: new NativeFn('Math.min', 2, { lengthIsMinimum: true }),
+        abs: new NativeFn('Math.abs', 1),
+        floor: new NativeFn('Math.floor', 1),
+        ceil: new NativeFn('Math.ceil', 1),
+        ceiling: new NativeFn('Math.ceil', 1),
+        round: new NativeFn('Math.round', 1),
+        random: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        rnd: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        rand: new NativeFn('Math.random', 0, { nondeterministic: true }),
+        mod: new NativeOp('%', 2)
     };
     
     defConsts = {
@@ -125,14 +116,14 @@ var Environment = (function() {
     };
     
     defAddOps = {
-        '+': NativeOp('+', 2),
-        '-': NativeOp('-', 2)
+        '+': new NativeOp('+', 2),
+        '-': new NativeOp('-', 2)
     };
     
     defMulOps = {
-        '*': NativeOp('*', 2),
-        '/': NativeOp('/', 2),
-        '%': NativeOp('%', 2)
+        '*': new NativeOp('*', 2),
+        '/': new NativeOp('/', 2),
+        '%': new NativeOp('%', 2)
     };
 
     function clone(obj) {
@@ -266,9 +257,6 @@ var parseError = function(message, start, end) {
 };
 
 var Token = function(type, val, rangeInInput) {
-    if(!(this instanceof Token))
-        return new Token(type, val, rangeInInput);
-
     this.type = type;
     this.val = val;
     this.rangeInInput = rangeInInput;
@@ -293,9 +281,6 @@ var TokenType = {
 };
 
 var FnCall = function(env, name) {
-    if(!(this instanceof FnCall))
-        return new FnCall(env, name);
-    
     this.name = name;
     this.argCount = 0;
     this.envVal = env.getFnVal(name);
@@ -311,9 +296,6 @@ var lex = (function() {
         simpleNumRegex = /^[0-9.]/;
     
     var LexState = function(env, s) {
-        if(!(this instanceof LexState))
-            return new LexState(env, s);
-        
         var unwhitespaced = removeWhitespaceWithMap(s);
         
         this.env = env;
@@ -364,7 +346,7 @@ var lex = (function() {
     }
 
     return function(env, expr) {
-        var state = LexState(env, expr);
+        var state = new LexState(env, expr);
         
         while(state.s.length > 0)
             realLex(state);
@@ -415,13 +397,13 @@ var lex = (function() {
         if(!val)
             length = 1;
         
-        state.tokens.push(Token(type, val, state.rangeFromCurrentS(length)));
+        state.tokens.push(new Token(type, val, state.rangeFromCurrentS(length)));
     }
     
     function pushFnToken(state, type, id, lengthOverride) {
         var length = lengthOverride !== undefined ? lengthOverride : id.length;
         
-        pushToken(state, type, FnCall(state.env, id), length);
+        pushToken(state, type, new FnCall(state.env, id), length);
     }
     
     function addImplicitMul(state, numOk) {
@@ -483,9 +465,9 @@ var lex = (function() {
         var tok,
             env = state.env;
         
-        if(env.isFnName(id)) tok = Token(TokenType.Fn, FnCall(state.env, id), state.rangeFromCurrentS(id.length));
-        else if(env.isConst(id)) tok = Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
-        else if(env.isVarName(id)) tok = Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
+        if(env.isFnName(id)) tok = new Token(TokenType.Fn, new FnCall(state.env, id), state.rangeFromCurrentS(id.length));
+        else if(env.isConst(id)) tok = new Token(TokenType.Const, env.consts[id], state.rangeFromCurrentS(id.length));
+        else if(env.isVarName(id)) tok = new Token(TokenType.Var, id, state.rangeFromCurrentS(id.length));
         
         return tok;
     }
@@ -535,9 +517,6 @@ var lex = (function() {
 
 var ParseTree = (function() {
     var ParseTree = function(root, children) {
-        if(!(this instanceof ParseTree))
-            return new ParseTree(root, children);
-        
         this.root = root;
         this.children = children;
     };
@@ -614,7 +593,7 @@ var parse = (function() {
             
         while(tokens.length > 0 && tokens[0].type == TokenType.AddOp) {
             var temppt = eparse;
-            eparse = ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
+            eparse = new ParseTree(tokens.shift(), [temppt, parseTM(env, tokens)]);
         }
         
         return eparse;
@@ -625,7 +604,7 @@ var parse = (function() {
         
         while(tokens.length > 0 && tokens[0].type == TokenType.MulOp) {
             var temppt = tmparse;
-            tmparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
+            tmparse = new ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
         }
         
         return tmparse;
@@ -638,13 +617,13 @@ var parse = (function() {
             throw parseErrorAtEnd('Expected a factor.');
         
         if(tokens[0].type == TokenType.Negate)
-            fparse = ParseTree(tokens.shift(), [parseF(env, tokens)]);
+            fparse = new ParseTree(tokens.shift(), [parseF(env, tokens)]);
         else {
             fparse = parseDAT(env, tokens);
             
             if(tokens.length > 0 && tokens[0].type == TokenType.Pow) {
                 var temppt = fparse;
-                fparse = ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
+                fparse = new ParseTree(tokens.shift(), [temppt, parseF(env, tokens)]);
             }
         }
         
@@ -653,7 +632,7 @@ var parse = (function() {
     
     function parseFN(env, tokens) {
         var head = eatMandToken(tokens, TokenType.Fn, 'function name'),
-            fnparse = ParseTree(head, []);
+            fnparse = new ParseTree(head, []);
         
         eatMandToken(tokens, TokenType.LP, 'left parenthesis', 'Functions must be followed by an opening parenthesis.');
         
@@ -709,7 +688,7 @@ var parse = (function() {
             case TokenType.Var:
             case TokenType.Num:
             case TokenType.Const:
-                return ParseTree(tokens.shift());
+                return new ParseTree(tokens.shift());
                 
             case TokenType.Fn:
                 return parseFN(env, tokens);
@@ -743,7 +722,7 @@ var parse = (function() {
         // Emulate the TI-calculator's behavior of adding in missing close
         // parentheses if we've hit the end of the input.
         if(env.options.autoParens && tokens.length === 0)
-            return Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
+            return new Token(TokenType.RP);  // TODO: it's ok that this doesn't have a rangeInInput, right?
         
         return eatMandToken(tokens, TokenType.RP, 'right parenthesis', hint);
     }
@@ -924,7 +903,7 @@ var Expr = (function() {
                 if(typeof arguments[0] != 'string')
                     throw new Error('Invalid arguments');
                 
-                env = Environment();
+                env = new Environment();
                 s = arguments[0];
                 break;
             case 2:
@@ -936,9 +915,9 @@ var Expr = (function() {
                 if(arguments[0] instanceof Environment)
                     env = arguments[0];
                 else if(typeof arguments[0] == 'string')
-                    env = Environment(arguments[0].split(','));
+                    env = new Environment(arguments[0].split(','));
                 else if(Object.prototype.toString.call(arguments[0]) === '[object Array]')
-                    env = Environment(arguments[0]);
+                    env = new Environment(arguments[0]);
                 else
                     throw new Error('Invalid arguments');
                 break;
@@ -953,7 +932,7 @@ var Expr = (function() {
                 if(typeof arguments[arguments.length - 1] != 'string')
                     throw new Error('Invalid arguments');
                 
-                env = Environment(vars);
+                env = new Environment(vars);
                 s = arguments[arguments.length - 1];
         }
         
@@ -967,7 +946,7 @@ var Expr = (function() {
         if(arguments.length == 1) {
             if(typeof vars != 'string')
                 throw new Error('Invalid arguments');
-            env = Environment();
+            env = new Environment();
             s = vars;
         }
         else {
@@ -980,7 +959,7 @@ var Expr = (function() {
                 }
             }
             
-            env = Environment(vns);
+            env = new Environment(vns);
         }
         
         return compile(env, parse(env, lex(env, s))).apply(null, vals);
