@@ -84,6 +84,7 @@ var Expr = (function() {
             lex: lex,
             parse: parse,
             
+            ParseTree: ParseTree,
             Token: Token,
             TokenType: TokenType,
             FnCall: FnCall

@@ -1,4 +1,4 @@
-var parse = (function() {
+var ParseTree = (function() {
     var ParseTree = function(root, children) {
         if(!(this instanceof ParseTree))
             return new ParseTree(root, children);
@@ -51,7 +51,11 @@ var parse = (function() {
     ParseTree.prototype.toString = function() {
         return prettyPrint(this, '', false, true);
     };
+    
+    return ParseTree;
+})();
 
+var parse = (function() {
     return function(env, tokens) {
         var toks = tokens.slice(),
             pt = parseE(env, toks);
